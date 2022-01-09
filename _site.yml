@@ -1,0 +1,11 @@
+name: "Chicago Floods"
+navbar:
+  title: "Chicago Floods"
+  left:
+    - text: "Article"
+      href: index.html
+    - text: "Code"
+      href: Journal.html
+    - text: "Data Sources"
+      href: Links.html
+output_dir: "docs"
