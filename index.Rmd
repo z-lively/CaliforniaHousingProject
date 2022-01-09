@@ -1,5 +1,5 @@
 ---
-title: "Article: Chicago Floods"
+title: "California Housing"
 output: html_document
 ---
 
@@ -12,193 +12,261 @@ output: html_document
 
 <div class="row" style="padding-top: 0px;"> 
 <div class="col-sm-6">
-```{r load libraries,echo = FALSE, message = FALSE, warning=FALSE}
+```{r}
 library(tidyverse)
 library(tidycensus)
 library(ggplot2)
-library(plotly)
-library(scales)
-```
-```{r Get Data,echo = FALSE, message = FALSE, warning=FALSE, results = 'hide'}
-FloodData <- read_csv("ChicagoFloodData.csv") %>%
-  mutate(GEOID = as.numeric(AreaCode))
+library(spData)
+library(sf)
+library(rcartocolor)
+library(cowplot)
+library(tigris)
+options(tigris_use_cache = TRUE)
 
-minGEOID <- min(FloodData$GEOID)
-maxGEOID <- max(FloodData$GEOID)
-
-CensusVariables <- load_variables(2019, "acs5", cache = TRUE)
-
-CensusData <- get_acs(
-  geography = "zcta",
-  table = c("B03002"),
-  geometry = TRUE,
-  cache_table = TRUE) %>% 
-  filter(GEOID >= minGEOID & GEOID <= maxGEOID)
-
-ChicagoData <- merge(CensusData, FloodData) 
 
 ```
-```{r, Clean Data,echo = FALSE, message = FALSE, warning=FALSE, results = FALSE}
-ChicagoData <- ChicagoData %>% 
-  mutate(Group = case_when(variable == "B03002_003" ~ 'W',
-                           variable == "B03002_004" ~ 'BoHL',
-                           variable == "B03002_012" ~ 'BoHL',
-                           variable == "B03002_001" ~ 'Duplicate',
-                           variable == "B03002_002" ~ 'Duplicate',
-                           variable == "B03002_013" ~ 'Duplicate',
-                           variable == "B03002_014" ~ 'Duplicate',
-                           variable == "B03002_015" ~ 'Duplicate',
-                           variable == "B03002_016" ~ 'Duplicate',
-                           variable == "B03002_017" ~ 'Duplicate',
-                           variable == "B03002_018" ~ 'Duplicate',
-                           variable == "B03002_019" ~ 'Duplicate',
-                           variable == "B03002_020" ~ 'Duplicate',
-                           variable == "B03002_021" ~ 'Duplicate',
-                           TRUE ~ 'Other'))
 
-ChicagoDataSummary <- ChicagoData  %>% 
-  filter(Group != 'Duplicate') %>% 
-  filter(FloodingLikelihood == 0.2) %>%
-  group_by(Group, GEOID) %>%
-  summarize(Population = sum(estimate),
-            FloodChance = mean(FloodChance)) %>%
-  group_by(GEOID) %>%
-  mutate(PercentPopulation = (Population/sum(Population))*100)
+```{r Load ACS}
+AllACSVariables <- load_variables(year = 2019, 
+                                  dataset = "acs5", 
+                                  cache = TRUE)
 
-ChicagoDataSummary <- ChicagoDataSummary %>%
-  filter(Group == 'BoHL')
+ACSYears <- lst(2009, 2019)
 
-ChicagoDataSummary <- sf::st_cast(ChicagoDataSummary, "MULTIPOLYGON")
-```
-```{r Plot Themes and Variables,echo = FALSE, message = FALSE, warning=FALSE}
+CaliforniaPopulations <- map_dfr(
+  ACSYears, 
+  ~get_acs(
+    geography = "county",
+    variables = "B01003_001",
+    year = .x,
+    state = "CA",
+    survey = "acs5",
+    geometry = FALSE
+  ),
+  .id = "year") %>%
+  mutate(County.Name = str_sub(NAME,end = -13))
 
-hover_font = list(
-  size = 12,
-  color = "black"
-)
+CaliforniaPopulations <- subset(CaliforniaPopulations, select = -c(moe))
+
+CaliforniaGeography <- get_acs(
+  geography = "county",
+  variables = "B01003_001",
+  year = 2019,
+  state = "CA",
+  survey = "acs5",
+  geometry = TRUE
+) %>%
+  mutate(County.Name = str_sub(NAME,end = -13))
+
+CaliforniaGeography <- subset(CaliforniaGeography, select = -c(estimate, moe, variable))
 
 
-hover_label = list(
-  bgcolor = "white",
-  bordercolor = "black",
-  font = hover_font
-)
-
-map_theme <- list(
-  theme_classic() +
-    theme(
-      legend.title = element_text(size = 10),
-      legend.text = element_text(size = 8),
-      axis.text = element_blank(),
-      axis.ticks = element_blank(),
-      axis.line = element_blank())
-)
-
-scatter_theme <- list(
-  theme_minimal() +
-    theme(
-      plot.title = element_text(size = 12, 
-                                face = "bold",
-                                hjust = .5),
-      axis.title = element_text(size = 11),
-      axis.text = element_text(size = 9),
-      legend.position = "none")
-)
 
 ```
-# **Flood Risk in Chicago is Higher for Black and Hispanic Communities**
-By: Zack Lively (z.a.lively@gmail.com)
-```{r Create Map Plot,echo = FALSE, message = FALSE, warning=FALSE}
-MapPlot <- ggplot(data = ChicagoDataSummary, 
-                  aes(fill = FloodChance,
-                      text = paste("Zip Code:", GEOID,"\n",
-                                   "Properties at Risk:", FloodChance,"\n",
-                                   "Black or Hispanic Residents:",
-                                   round(PercentPopulation),"%"))) +
-  geom_sf(color = 'black', size = .3) +
-  scale_fill_distiller(palette = "YlGnBu", 
-                       direction = 1,
-                       breaks = pretty_breaks(),
-                       label = comma,
-                       limits = c(0, 15000)) +
-  labs(title = NULL,
-       fill = "Properties\nat Risk") +
-  map_theme
 
-ggplotly(MapPlot, tooltip = c("text")) %>% 
-  style(hoverlabel = hover_label) %>%
-  layout(
-    autosize = F, 
-    width = 400, 
-    height = 500
-  ) %>%
-  config(displayModeBar = FALSE,
-         showTips = TRUE)
+```{r Chunk 2}
+CaliforniaPopulationsSpread <- CaliforniaPopulations %>% spread(year, estimate)
+CaliforniaPopulationsSpread$Growth <- (CaliforniaPopulationsSpread$"2019" - CaliforniaPopulationsSpread$"2009")/ CaliforniaPopulationsSpread$"2009"
+
+CaliforniaPopulationsSpread$Change <- CaliforniaPopulationsSpread$"2019" - CaliforniaPopulationsSpread$"2009"
+
+CaliforniaForMap <- merge(CaliforniaGeography, CaliforniaPopulationsSpread)
 ```
-Chicago has a problem with property flooding, and it is particularly acute for the city’s black and Hispanic communities. Data from First Street Foundation’s (FSF) Flood Model and the American Community Survey (ACS) show that zip codes with majority black and Hispanic populations have substantially more properties at risk of flooding than anywhere else in the city.
 
-FSF’s Flood Model estimates the annual risk of flood for individual addresses to whole states. Risk assessment is based on independent analysis of rainfall, storm surge, and river data, and by coupling these factors to predict their interactions. The model’s predictions regularly update to account for changing weather patterns, like increases in average precipitation or temperatures. 
 
-To assess for differences in flood risk across Chicago’s communities, the city was broken into its nearly 60 zip codes. Estimated demographic breakdown was obtained from the 2015-2019 ACS. The estimated number of black or Hispanic residents for each zip code were consolidated into one group; the rest of the races and ethnicities were consolidated into the other. 
-
-Using FSF’s methodology, the number of at-risk properties were generated for each zip code. At-risk properties have at least a 1-in-500 chance of annual flooding, yet many of the properties are at greater risk.
-<br>
-<br>
-```{r Create Scatter Plot, echo = FALSE, message = FALSE, warning=FALSE}
-ScatterPlot <- ggplot(ChicagoDataSummary, 
-                      aes(x = PercentPopulation, 
-                          y = FloodChance,
-                          fill = FloodChance,
-                          color = FloodChance,
-                          text = paste("Zip Code:", GEOID,"\n",
-                                       "Properties at Risk:",
-                                       FloodChance,"\n",
-                                       "Black or Hispanic Residents:",
-                                       round(PercentPopulation),"%"))) +
-  geom_point(shape=21, 
-             size=4.5) +
-  scale_fill_distiller(palette = "YlGnBu", 
+```{r Chunk 3}
+ggplot() +
+  geom_sf(data = CaliforniaForMap, aes(fill = Growth), color = 'black') +
+  scale_fill_distiller(palette = "PRGn", 
                        direction = 1) +
-  scale_color_gradient(guide = FALSE, 
-                       low = "grey1", 
-                       high = "black") +
-  labs(title = "Flood Risk by Chicago Zip Code",
-       x = "Black or Hispanic Residents",
-       y = "Properties at Risk") +
-  scale_x_continuous(labels =  scales::percent_format(scale = 1), 
-                     breaks = pretty_breaks()) +
-  scale_y_continuous(labels = comma, 
-                     breaks = pretty_breaks()) +
-  scatter_theme
+  theme_classic()
 
-ggplotly(ScatterPlot, tooltip = "text") %>% 
-  style(hoverlabel = hover_label) %>%
-  layout(    
-    autosize = F, 
-    width = 440, 
-    height = 440) %>%
-  config(displayModeBar = FALSE,
-         showTips = TRUE)
+
+hist(CaliforniaForMap$Growth)
+
 ```
-Communities that have the most properties at risk of flood are predominately black and Hispanic communities. Conversely, communities that have the fewest properties at risk of flood are communities with the fewest black and Hispanic residents. This granular look at flood risk in Chicago shows there is a spectrum of risk for black and Hispanic communities of a magnitude nonexistent in other communities. All communities where the estimated black or Hispanic population is under 20% have less than 2,500 properties at risk. The communities with an estimated black or Hispanic population of over 80% have up to nearly 15,000 properties at risk.
 
-Flooding is an ever more pressing issue for Chicago as precipitation levels over the last five years have summed to produce the city’s wettest half-decade on record. This is an inflection point for a city that was once at the vanguard of civil engineering. Now, the city’s infrastructure cannot keep up.
 
-However, weather pattern changes alone cannot explain the disparate flood risk that separates Chicago’s black and Hispanic communities from the city’s other zip codes. Instead, it has been the city’s history of racist housing policies—redlining, predatory home-mortgage markets, and a panoply of other practices—that has situated Chicago as a perennial member on lists of America’s most segregated cities. Segregated neighborhoods combined with reduced community investment and lower wages for black and Hispanic workers makes it possible for flooding that is endemic to majority-minority zip codes.
+```{r Chunk 4}
 
-Flooding usually results from inundated sewer systems, reservoirs, and storage tunnels. When the city’s reservoirs and storage tunnels fill with rainwater, excess sewage water often seeps into homes as it rises through basement drains. This is a particularly urgent problem for individuals who have rented out basements.
+CaliforniaPermits <- read.csv('CaliforniaPermits.csv') %>%
+  mutate(NumUnits = as.numeric(gsub(",","",Total.Units)))
 
-Basement flooding has numerous harmful effects. Monetarily, just minor flooding can quickly become expensive—especially for bottom floor residents as damage to furniture and electronics is added to basic basement repair costs. However, most egregious is the potential for harmful health effects; sewage-laced water introduces bacteria, mold, and can attract infestations. 
+```
 
-Chicago’s Department of Waste Management (DWM) has been working to reduce the frequency of basement floods in the city. According to the DWM’s website, “The City is working hard to improve our aging infrastructure, but there are 4,400 miles of sewer main in Chicago, and mere replacement is not the answer. The key is to keep as much water out of the sewer as possible during the heaviest rains.” So, the department is installing rain blockers on street sewer drains in an effort to prevent sewer systems from being overwhelmed. In practice, rain blockers turn streets into temporary water reservoirs, then rainwater enters sewers over many hours instead of rushing in. 
+```{r Chunk 5}
 
-The DWM’s website does not state whether black and Hispanic communities are receiving additional preventative technologies to address the heightened risk they face. 
+CaliforniaPermitsClean <- CaliforniaPermits %>% filter(Survey.Date >= 2009 & Survey.Date <= 2019)
 
-While the DWM could focus on high-risk communities, they will need residents’ help to fully address the flood causes. This is because the DWM cannot provide preventive technology when water is on private property, and, unfortunately for residents, water on private property is a major source of flood water. Increasingly wet years have antiquated Chicago’s gutter systems. These systems, which guide water to sewage drains, now facilitate basement flooding. “In essence, we are flooding ourselves,” says Chicago’s DWM.
+CaliforniaPermitsSummary <- CaliforniaPermitsClean %>%
+  group_by(County.Name) %>%
+  summarize(NumPermits = sum(NumUnits))
 
-Rainfall increases in the city stresses the need for concerted efforts between the city and its communities to reduce flood risk. However, the city’s solutions will not be equitable if they are uniformly distributed. The data shows that black and Hispanic communities risk property flooding that far exceeds the risk to the city’s other neighborhoods. To begin to reduce the risk disparity that currently exists, the city will need to provide additional preventative technology and efforts to its black and Hispanic communities.  
+```
 
-Data sources: First Street Foundation’s Flood Factor, US 2015-2019 American Community Survey
+```{r Chunk 6}
+
+CaliforniaGrowthToPermit <- merge(CaliforniaPermitsSummary, CaliforniaForMap)
+
+CaliforniaGrowthToPermit$ChangeRatio <- CaliforniaGrowthToPermit$Change/CaliforniaGrowthToPermit$NumPermits
+
+ggplot(data = CaliforniaGrowthToPermit, aes(fill = ChangeRatio, geometry = geometry)) +
+  geom_sf(color = 'black') +
+  scale_fill_distiller(palette = "PRGn", 
+                       direction = 1, 
+                       lim = c(-10, 10)) +
+  theme_classic()
+
+```
+
+
+```{r Chunk 7}
+
+ACSYears <- lst(2009, 2019)
+
+MedianRent <- map_dfr(
+  ACSYears, 
+  ~get_acs(
+    geography = "county",
+    variables = "B25059_001",
+    year = .x,
+    state = "CA",
+    survey = "acs5",
+    geometry = FALSE
+  ),
+  .id = "year") %>%
+  mutate(County.Name = str_sub(NAME,end = -13))
+
+MedianRent <- subset(MedianRent, select = -c(moe))
+
+MedianRentSpread <- MedianRent %>% spread(year, estimate)
+MedianRentSpread$RentGrowth <- (MedianRentSpread$"2019" - MedianRentSpread$"2009")/ MedianRentSpread$"2009"
+
+MedianRentSpread$RentChange <- MedianRentSpread$"2019" - MedianRentSpread$"2009"
+
+MedianRentSummary <- MedianRentSpread %>%
+  group_by(County.Name) %>%
+  summarize(RentGrowth = RentGrowth,
+            RentChange = RentChange)
+
+RentMapPermits <- merge(MedianRentSummary, CaliforniaGrowthToPermit) 
+
+ggplot(RentMapPermits %>% filter(ChangeRatio > -20), 
+       aes(x = ChangeRatio, y= log(RentChange))) +
+  geom_point()
+
+ggplot(RentMapPermits %>% 
+         filter(ChangeRatio > 0), 
+       aes(x = ChangeRatio)) + 
+  geom_histogram()
+
+AboveZeroRatios <- RentMapPermits %>% filter(ChangeRatio >= 0 ) %>%
+  mutate(RatioTile = ntile(ChangeRatio, 2))
+
+ggplot(AboveZeroRatios, aes(x = RatioTile, y = RentChange, group = RatioTile)) +
+  geom_boxplot() +
+  theme_minimal()
+
+```
+
+
+## Labor Force ##
+
+```{r Chunk 8}
+
+LaborForce <- read.csv('Local_Area_Unemployment_Statistics__LAUS_.csv') %>%
+  mutate(
+    AreaType = ï..Area.Type,
+    SeasonallyAdjusted = Seasonally.Adjusted..Y.N.
+  )
+
+LaborForceClean <- LaborForce %>% 
+  filter(AreaType == 'County') %>%
+  filter(Year == 2009 | Year == 2019) %>%
+  filter(Month == 'January') %>%
+  filter(SeasonallyAdjusted == 'N') %>%
+  mutate(County.Name = Area.Name,
+         Labor.Force = as.numeric(gsub(",","",Labor.Force)))%>%
+  subset(select = c(County.Name, Year, Labor.Force)) %>%
+  spread(Year, Labor.Force) 
+
+LaborForceClean$LaborGrowth <- LaborForceClean$"2019" - LaborForceClean$"2009"
+
+LaborPermits <- merge(LaborForceClean, CaliforniaPermitsSummary)
+
+LaborPermits$LaborPermitRatio <- LaborPermits$LaborGrowth/LaborPermits$NumPermits
+
+LaborPermits <- LaborPermits %>%
+  subset(select = c(County.Name, LaborGrowth, NumPermits, LaborPermitRatio))
+
+LaborPermits <- merge(LaborPermits, CaliforniaGeography)
+
+ggplot(LaborPermits, aes(fill = LaborPermitRatio, geometry = geometry)) +
+  geom_sf() +
+  scale_fill_distiller(palette = "PRGn", 
+                       direction = 1, 
+                       lim = c(-8.5, 8.5))
+
+LaborPermits <- merge(LaborPermits, RentMapPermits) 
+LaborPermitTile <- LaborPermits %>%
+  mutate(LaborGroup = ifelse(LaborPermitRatio > 1, 2, 1),
+         LaborTile = ntile(LaborPermitRatio,2))
+
+plot(LaborPermitTile$LaborPermitRatio, LaborPermitTile$RentChange)
+
+ggplot(LaborPermitTile, aes(x = as.factor(LaborGroup), y = (RentChange))) + 
+  geom_boxplot()
+
+```
+
+
+```{r Chunk 9 }
+
+us_states = states(cb = FALSE, class = "sf")
+
+ca_counties = counties("CA")
+
+us_states = subset(us_states, 
+                   !NAME %in% c(
+                     "United States Virgin Islands",
+                     "Commonwealth of the Northern Mariana Islands",
+                     "Guam",
+                     "American Samoa",
+                     "Puerto Rico",
+                     "Alaska",
+                     "Hawaii"
+                   ))
+
+ky_districts_2163 = st_transform(ca_counties, crs = 4326) #2163
+us_states_2163 = st_transform(us_states, crs = 4326)
+
+ky_districts_2163_bb = st_as_sfc(st_bbox(ky_districts_2163))
+ky_districts_2163_bb = st_buffer(ky_districts_2163_bb, dist = 10000)
+
+ky_districts_2163$values = runif(nrow(ky_districts_2163))
+
+ggm3 = ggplot() + 
+  geom_sf(data = us_states_2163, fill = "white", size = 0.2) + 
+  geom_sf(data = ky_districts_2163_bb, fill = NA, color = "blue", size = 1.2) +
+  theme_void()
+
+ggm3
+
+ggm4 = ggplot() + 
+  geom_sf(data = us_states_2163, fill = "#F5F5DC") +
+  geom_sf(data = ky_districts_2163, aes(fill = values), color = 'black') +
+  scale_fill_carto_c(palette = "Geyser") +
+  theme_void() +
+  theme(legend.position = c(0.5, 0.07),
+        legend.direction = "horizontal",
+        legend.key.width = unit(10, "mm"),
+        plot.background = element_rect(fill = "#BFD5E3")) +
+  coord_sf(xlim = st_bbox(ky_districts_2163_bb)[c(1, 3)],
+           ylim = st_bbox(ky_districts_2163_bb)[c(2, 4)])
+
+ggm4
+
+```
 
 </div>
 <div class="col-sm-6">

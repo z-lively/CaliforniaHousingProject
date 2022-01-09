@@ -1,11 +1,7 @@
-name: "Chicago Floods"
+name: "California Housing"
 navbar:
-  title: "Chicago Floods"
+  title: "California Housing"
   left:
-    - text: "Article"
+    - text: "Project"
       href: index.html
-    - text: "Code"
-      href: Journal.html
-    - text: "Data Sources"
-      href: Links.html
 output_dir: "docs"

@@ -1,5 +1,5 @@
 ---
-title: "Data Sources: Chicago Floods"
+title: "Data Sources: California Housing"
 output: html_document
 ---
 
@@ -14,8 +14,7 @@ output: html_document
 <div class="col-sm-10">
 
 # Data Sources #
-American Community Survey Data: https://www.census.gov/programs-surveys/acs <br>
-Flood Data: https://floodfactor.com/
+
 
 
 
