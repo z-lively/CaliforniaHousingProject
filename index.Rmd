@@ -16,6 +16,8 @@ display: none;
 <div class="col-sm-6">
 
 ```{r Load libraries, echo = FALSE, warning = FALSE, message = FALSE}
+setwd("C:/Users/zaliv/OneDrive/Desktop/Data Projects/CaliforniaHousingProject")
+
 library(tidyverse)
 library(tidycensus)
 library(ggplot2)
@@ -475,6 +477,7 @@ ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
   theme(legend.position = "bottom")
 
 ```
+
 ```{r test map, echo = FALSE}
 
 # pal <- colorNumeric(
