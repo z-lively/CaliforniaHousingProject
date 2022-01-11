@@ -37,7 +37,6 @@ library(hrbrthemes)
 
 options(tigris_use_cache = TRUE)
 ```
-
 ```{r Load data, echo = FALSE, warning = FALSE, message = FALSE}
 CAPermits <- read.csv('CaliforniaPermits.csv') %>%
   mutate(NumUnits = as.numeric(gsub(",","",Total.Units)))
@@ -88,7 +87,6 @@ CAHouseMed <- get_acs_data(ACSYears, CAHOUSEMED)
 CAHouseHigh <- get_acs_data(ACSYears, CAHOUSEHIGH)
 
 ```
-
 ```{r Clean Data, echo = FALSE, warning = FALSE, message = FALSE}
 CleanCAPermits <- CAPermits %>% 
   filter(Survey.Date >= 2009 & Survey.Date <= 2019)
@@ -113,7 +111,6 @@ CleanCAHouseHigh <- CAHouseHigh
 
 
 ```
-
 ```{r Spread Data, echo = FALSE, warning = FALSE, message = FALSE}
 SpreadCAPermits <- CleanCAPermits
 SpreadCALabor <- CleanCALabor  %>% spread(Year, Labor.Force)
@@ -128,7 +125,6 @@ SpreadCAHouseLow <- spread_data(CleanCAHouseLow)
 SpreadCAHouseMed <- spread_data(CleanCAHouseMed)
 SpreadCAHouseHigh <- spread_data(CleanCAHouseHigh)
 ```
-
 ```{r Chunk 2, echo = FALSE, warning = FALSE, message = FALSE}
 
 calculate_growth_rate <- function(DataTable) {GrowthRate <- (DataTable$"2019" - DataTable$"2009")/
@@ -184,7 +180,6 @@ SpreadCAHouseHigh <- SpreadCAHouseHigh %>%
   )
 
 ```
-
 ```{r Summarize, echo = FALSE, warning = FALSE, message = FALSE}
 
 SummaryCAPermits <- SpreadCAPermits %>%
@@ -208,7 +203,6 @@ SummaryCAHouseMed <- SpreadCAHouseMed %>% subset(select = c(County.Name, MedHous
 SummaryCAHouseHigh <- SpreadCAHouseHigh %>% subset(select = c(County.Name, HighHouseGrowthRate, HighHouseChange))
 
 ```
-
 ```{r Combine Tables, echo = FALSE, warning = FALSE, message = FALSE}
 # Need to figure out better way to do this
 
@@ -223,7 +217,6 @@ MergeCA7 <- merge(MergeCA6, MergeCA3)
 DataTable <- merge(MergeCA7, MergeCA5)
 
 ```
-
 ```{r Second Calculations, echo = FALSE, warning = FALSE, message = FALSE}
 
 DataTable <- DataTable %>%
@@ -231,7 +224,6 @@ DataTable <- DataTable %>%
          PopRatio = PopChange/NumPermits)
 
 ```
-
 ```{r Correlation Matrix, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
 
 CorrelationMatrix <- DataTable %>% subset(select = -c(County.Name))
@@ -241,7 +233,6 @@ chart.Correlation(CorrelationMatrix, histogram = TRUE)
 plot(CorrelationMatrix$LaborRatio, CorrelationMatrix$RentChange)
 
 ```
-
 ```{r Chunk 9, echo = FALSE, warning = FALSE, message = FALSE}
 us_states <- states(cb = FALSE, class = "sf") 
 
@@ -290,7 +281,6 @@ ca_counties$values <- runif(nrow(ca_counties))
 
 ca_counties_for_merge <- ca_counties %>% mutate(County.Name = NAMELSAD)
 ```
-
 ```{r Merge Map and Data, echo = FALSE, warning = FALSE, message = FALSE}
 
 MapDataTable <- merge(DataTable, ca_counties_for_merge)
@@ -314,7 +304,6 @@ MapDataTable <- MapDataTable %>% mutate(LaborRatioSimple =
 
 
 ```
-
 ```{r Plot Variables, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
 reds <- tmaptools::get_brewer_pal("RdGy", 9)
 cols <- c(reds[8], reds[7], reds[4], reds[3], reds[2], reds[1])
@@ -336,7 +325,6 @@ names(HouseChange.labs) <- c("LowHouseChange",
 col1 <- "#AAAAAA" 
 col2 <- "#C7433F"
 ```
-
 ```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=11}
 MapDataTableForLabels <- MapDataTable %>% filter(LaborRatio >= 2.5) %>%
   mutate(County = str_sub(County.Name,end = -7))
@@ -375,10 +363,8 @@ ggplot() +
 
 
 ```
-
 </div>
 <div class="col-sm-6">
-
 ```{r Workers:Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
 
 FilteredDataTable <- DataTable %>% 
@@ -426,7 +412,6 @@ RentPlot <- ggplot(RentChangesSummary, aes(x = as.factor(TileSplit), y = AvgChan
   theme(legend.position = "bottom")
 
 ```
-
 ```{r Workers:Permits and House, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
 
 HouseChanges <- subset(FilteredDataTable, select = c(County.Name, 
@@ -470,7 +455,6 @@ HousePlot <- ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
   theme(legend.position = "bottom")
 
 ```
-
 ```{r Combined Rent and House Plot,echo = FALSE, message=FALSE,warning = FALSE, fig.height=9, fig.width = 7}
 library(cowplot)
 
@@ -482,8 +466,6 @@ plot_grid(RentPlot +
           cols = 1)
 
 ```
-
-
 ```{r test map, echo = FALSE, include = FALSE}
 
 # pal <- colorNumeric(
