@@ -471,7 +471,7 @@ HousePlot <- ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
 
 ```
 
-```{r Combined Rent and House Plot,echo = FALSE, message=FALSE,warning = FALSE, fig.height=11, fig.width = 7}
+```{r Combined Rent and House Plot,echo = FALSE, message=FALSE,warning = FALSE, fig.height=9, fig.width = 7}
 library(cowplot)
 
 plot_grid(RentPlot + 
