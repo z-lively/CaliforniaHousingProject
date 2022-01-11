@@ -1,18 +1,21 @@
 ---
 title: "California Housing"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 <style type="text/css">
 .title {
-  display: none;
+display: none;
 }
 
 </style>
 
 <div class="row" style="padding-top: 0px;"> 
 <div class="col-sm-6">
-```{r}
+
+```{r Load libraries, echo = FALSE, warning = FALSE, message = FALSE}
 library(tidyverse)
 library(tidycensus)
 library(ggplot2)
@@ -21,252 +24,482 @@ library(sf)
 library(rcartocolor)
 library(cowplot)
 library(tigris)
+library(plotly)
+library(rgdal)    # for readOGR and others
+library(sp)       # for spatial objects
+library(leaflet)  # for interactive maps (NOT leafletR here)
+library(maptools)
+library(PerformanceAnalytics)
+library(data.table)
+library(hrbrthemes)
+
 options(tigris_use_cache = TRUE)
-
-
 ```
 
-```{r Load ACS}
+```{r Load data, echo = FALSE, warning = FALSE, message = FALSE}
+CAPermits <- read.csv('CaliforniaPermits.csv') %>%
+  mutate(NumUnits = as.numeric(gsub(",","",Total.Units)))
+
+CALabor <- read.csv('Local_Area_Unemployment_Statistics__LAUS_.csv') %>%
+  mutate(
+    AreaType = ï..Area.Type,
+    SeasonallyAdjusted = Seasonally.Adjusted..Y.N.)
+
 AllACSVariables <- load_variables(year = 2019, 
                                   dataset = "acs5", 
                                   cache = TRUE)
 
-ACSYears <- lst(2009, 2019)
-
-CaliforniaPopulations <- map_dfr(
-  ACSYears, 
-  ~get_acs(
-    geography = "county",
-    variables = "B01003_001",
-    year = .x,
-    state = "CA",
-    survey = "acs5",
-    geometry = FALSE
-  ),
-  .id = "year") %>%
-  mutate(County.Name = str_sub(NAME,end = -13))
-
-CaliforniaPopulations <- subset(CaliforniaPopulations, select = -c(moe))
-
-CaliforniaGeography <- get_acs(
-  geography = "county",
-  variables = "B01003_001",
-  year = 2019,
-  state = "CA",
-  survey = "acs5",
-  geometry = TRUE
-) %>%
-  mutate(County.Name = str_sub(NAME,end = -13))
-
-CaliforniaGeography <- subset(CaliforniaGeography, select = -c(estimate, moe, variable))
-
-
-
-```
-
-```{r Chunk 2}
-CaliforniaPopulationsSpread <- CaliforniaPopulations %>% spread(year, estimate)
-CaliforniaPopulationsSpread$Growth <- (CaliforniaPopulationsSpread$"2019" - CaliforniaPopulationsSpread$"2009")/ CaliforniaPopulationsSpread$"2009"
-
-CaliforniaPopulationsSpread$Change <- CaliforniaPopulationsSpread$"2019" - CaliforniaPopulationsSpread$"2009"
-
-CaliforniaForMap <- merge(CaliforniaGeography, CaliforniaPopulationsSpread)
-```
-
-
-```{r Chunk 3}
-ggplot() +
-  geom_sf(data = CaliforniaForMap, aes(fill = Growth), color = 'black') +
-  scale_fill_distiller(palette = "PRGn", 
-                       direction = 1) +
-  theme_classic()
-
-
-hist(CaliforniaForMap$Growth)
-
-```
-
-
-```{r Chunk 4}
-
-CaliforniaPermits <- read.csv('CaliforniaPermits.csv') %>%
-  mutate(NumUnits = as.numeric(gsub(",","",Total.Units)))
-
-```
-
-```{r Chunk 5}
-
-CaliforniaPermitsClean <- CaliforniaPermits %>% filter(Survey.Date >= 2009 & Survey.Date <= 2019)
-
-CaliforniaPermitsSummary <- CaliforniaPermitsClean %>%
-  group_by(County.Name) %>%
-  summarize(NumPermits = sum(NumUnits))
-
-```
-
-```{r Chunk 6}
-
-CaliforniaGrowthToPermit <- merge(CaliforniaPermitsSummary, CaliforniaForMap)
-
-CaliforniaGrowthToPermit$ChangeRatio <- CaliforniaGrowthToPermit$Change/CaliforniaGrowthToPermit$NumPermits
-
-ggplot(data = CaliforniaGrowthToPermit, aes(fill = ChangeRatio, geometry = geometry)) +
-  geom_sf(color = 'black') +
-  scale_fill_distiller(palette = "PRGn", 
-                       direction = 1, 
-                       lim = c(-10, 10)) +
-  theme_classic()
-
-```
-
-
-```{r Chunk 7}
+get_acs_data <- function(ACSYears, variable) {
+  
+  ACSData <- map_dfr(
+    ACSYears, 
+    ~get_acs(
+      geography = "county",
+      variables = variable,
+      year = .x,
+      state = "CA",
+      survey = "acs5",
+      geometry = FALSE
+    ),
+    .id = "year") %>%
+    mutate(County.Name = str_sub(NAME,end = -13))
+  
+  ACSData <- subset(ACSData, select = -c(moe))
+}
 
 ACSYears <- lst(2009, 2019)
 
-MedianRent <- map_dfr(
-  ACSYears, 
-  ~get_acs(
-    geography = "county",
-    variables = "B25059_001",
-    year = .x,
-    state = "CA",
-    survey = "acs5",
-    geometry = FALSE
-  ),
-  .id = "year") %>%
-  mutate(County.Name = str_sub(NAME,end = -13))
+CAPOPULATION <- "B01003_001"
+CARENTLOW <- "B25057_001"
+CARENTMED <- "B25058_001"
+CARENTHIGH <- "B25059_001"
+CAHOUSELOW <- "B25076_001"
+CAHOUSEMED <- "B25077_001"
+CAHOUSEHIGH <- "B25078_001"
 
-MedianRent <- subset(MedianRent, select = -c(moe))
-
-MedianRentSpread <- MedianRent %>% spread(year, estimate)
-MedianRentSpread$RentGrowth <- (MedianRentSpread$"2019" - MedianRentSpread$"2009")/ MedianRentSpread$"2009"
-
-MedianRentSpread$RentChange <- MedianRentSpread$"2019" - MedianRentSpread$"2009"
-
-MedianRentSummary <- MedianRentSpread %>%
-  group_by(County.Name) %>%
-  summarize(RentGrowth = RentGrowth,
-            RentChange = RentChange)
-
-RentMapPermits <- merge(MedianRentSummary, CaliforniaGrowthToPermit) 
-
-ggplot(RentMapPermits %>% filter(ChangeRatio > -20), 
-       aes(x = ChangeRatio, y= log(RentChange))) +
-  geom_point()
-
-ggplot(RentMapPermits %>% 
-         filter(ChangeRatio > 0), 
-       aes(x = ChangeRatio)) + 
-  geom_histogram()
-
-AboveZeroRatios <- RentMapPermits %>% filter(ChangeRatio >= 0 ) %>%
-  mutate(RatioTile = ntile(ChangeRatio, 2))
-
-ggplot(AboveZeroRatios, aes(x = RatioTile, y = RentChange, group = RatioTile)) +
-  geom_boxplot() +
-  theme_minimal()
+CAPopulation <- get_acs_data(ACSYears, CAPOPULATION)
+CARentLow <- get_acs_data(ACSYears, CARENTLOW)
+CARentMed <- get_acs_data(ACSYears, CARENTMED)
+CARentHigh <- get_acs_data(ACSYears, CARENTHIGH)
+CAHouseLow <- get_acs_data(ACSYears, CAHOUSELOW)
+CAHouseMed <- get_acs_data(ACSYears, CAHOUSEMED)
+CAHouseHigh <- get_acs_data(ACSYears, CAHOUSEHIGH)
 
 ```
 
+```{r Clean Data, echo = FALSE, warning = FALSE, message = FALSE}
+CleanCAPermits <- CAPermits %>% 
+  filter(Survey.Date >= 2009 & Survey.Date <= 2019)
 
-## Labor Force ##
-
-```{r Chunk 8}
-
-LaborForce <- read.csv('Local_Area_Unemployment_Statistics__LAUS_.csv') %>%
-  mutate(
-    AreaType = ï..Area.Type,
-    SeasonallyAdjusted = Seasonally.Adjusted..Y.N.
-  )
-
-LaborForceClean <- LaborForce %>% 
+CleanCALabor <- CALabor %>% 
   filter(AreaType == 'County') %>%
   filter(Year == 2009 | Year == 2019) %>%
   filter(Month == 'January') %>%
   filter(SeasonallyAdjusted == 'N') %>%
   mutate(County.Name = Area.Name,
-         Labor.Force = as.numeric(gsub(",","",Labor.Force)))%>%
-  subset(select = c(County.Name, Year, Labor.Force)) %>%
-  spread(Year, Labor.Force) 
+         Labor.Force = as.numeric(gsub(",","",Labor.Force))) %>%
+  subset(select = c(County.Name, Year, Labor.Force))
 
-LaborForceClean$LaborGrowth <- LaborForceClean$"2019" - LaborForceClean$"2009"
+CleanCAPopulation <- CAPopulation
+CleanCARentLow <- CARentLow
+CleanCARentMed <- CARentMed
+CleanCARentHigh <- CARentHigh
 
-LaborPermits <- merge(LaborForceClean, CaliforniaPermitsSummary)
+CleanCAHouseLow <- CAHouseLow
+CleanCAHouseMed <- CAHouseMed
+CleanCAHouseHigh <- CAHouseHigh
 
-LaborPermits$LaborPermitRatio <- LaborPermits$LaborGrowth/LaborPermits$NumPermits
-
-LaborPermits <- LaborPermits %>%
-  subset(select = c(County.Name, LaborGrowth, NumPermits, LaborPermitRatio))
-
-LaborPermits <- merge(LaborPermits, CaliforniaGeography)
-
-ggplot(LaborPermits, aes(fill = LaborPermitRatio, geometry = geometry)) +
-  geom_sf() +
-  scale_fill_distiller(palette = "PRGn", 
-                       direction = 1, 
-                       lim = c(-8.5, 8.5))
-
-LaborPermits <- merge(LaborPermits, RentMapPermits) 
-LaborPermitTile <- LaborPermits %>%
-  mutate(LaborGroup = ifelse(LaborPermitRatio > 1, 2, 1),
-         LaborTile = ntile(LaborPermitRatio,2))
-
-plot(LaborPermitTile$LaborPermitRatio, LaborPermitTile$RentChange)
-
-ggplot(LaborPermitTile, aes(x = as.factor(LaborGroup), y = (RentChange))) + 
-  geom_boxplot()
 
 ```
 
+```{r Spread Data, echo = FALSE, warning = FALSE, message = FALSE}
+SpreadCAPermits <- CleanCAPermits
+SpreadCALabor <- CleanCALabor  %>% spread(Year, Labor.Force)
 
-```{r Chunk 9 }
+spread_data <- function(DataTable) {SpreadDataTable <- DataTable %>% spread(year, estimate)}
 
-us_states = states(cb = FALSE, class = "sf")
+SpreadCAPopulation <- spread_data(CleanCAPopulation)
+SpreadCARentLow <- spread_data(CleanCARentLow)
+SpreadCARentMed <- spread_data(CleanCARentMed)
+SpreadCARentHigh <- spread_data(CleanCARentHigh)
+SpreadCAHouseLow <- spread_data(CleanCAHouseLow)
+SpreadCAHouseMed <- spread_data(CleanCAHouseMed)
+SpreadCAHouseHigh <- spread_data(CleanCAHouseHigh)
+```
 
-ca_counties = counties("CA")
+```{r Chunk 2, echo = FALSE, warning = FALSE, message = FALSE}
 
-us_states = subset(us_states, 
-                   !NAME %in% c(
-                     "United States Virgin Islands",
-                     "Commonwealth of the Northern Mariana Islands",
-                     "Guam",
-                     "American Samoa",
-                     "Puerto Rico",
-                     "Alaska",
-                     "Hawaii"
-                   ))
+calculate_growth_rate <- function(DataTable) {GrowthRate <- (DataTable$"2019" - DataTable$"2009")/
+  DataTable$"2009"}
+calculate_change <- function(DataTable) {LaborChange <- DataTable$"2019" - DataTable$"2009"}
 
-ky_districts_2163 = st_transform(ca_counties, crs = 4326) #2163
-us_states_2163 = st_transform(us_states, crs = 4326)
+SpreadCALabor <- SpreadCALabor %>%
+  mutate(
+    LaborGrowthRate = calculate_growth_rate(SpreadCALabor),
+    LaborChange = calculate_change(SpreadCALabor)
+  )
 
-ky_districts_2163_bb = st_as_sfc(st_bbox(ky_districts_2163))
-ky_districts_2163_bb = st_buffer(ky_districts_2163_bb, dist = 10000)
+SpreadCAPopulation <- SpreadCAPopulation %>%
+  mutate(
+    PopGrowthRate = calculate_growth_rate(SpreadCAPopulation),
+    PopChange = calculate_change(SpreadCAPopulation)
+  )
 
-ky_districts_2163$values = runif(nrow(ky_districts_2163))
+SpreadCARentLow <- SpreadCARentLow %>%
+  mutate(
+    LowRentGrowthRate = calculate_growth_rate(SpreadCARentLow),
+    LowRentChange = calculate_change(SpreadCARentLow)
+  )
 
-ggm3 = ggplot() + 
-  geom_sf(data = us_states_2163, fill = "white", size = 0.2) + 
-  geom_sf(data = ky_districts_2163_bb, fill = NA, color = "blue", size = 1.2) +
-  theme_void()
+SpreadCARentMed <- SpreadCARentMed %>%
+  mutate(
+    MedRentGrowthRate = calculate_growth_rate(SpreadCARentMed),
+    MedRentChange = calculate_change(SpreadCARentMed)
+  )
 
-ggm3
+SpreadCARentHigh <- SpreadCARentHigh %>%
+  mutate(
+    HighRentGrowthRate = calculate_growth_rate(SpreadCARentHigh),
+    HighRentChange = calculate_change(SpreadCARentHigh)
+  )
 
-ggm4 = ggplot() + 
-  geom_sf(data = us_states_2163, fill = "#F5F5DC") +
-  geom_sf(data = ky_districts_2163, aes(fill = values), color = 'black') +
-  scale_fill_carto_c(palette = "Geyser") +
+SpreadCAHouseLow <- SpreadCAHouseLow %>%
+  mutate(
+    LowHouseGrowthRate = calculate_growth_rate(SpreadCAHouseLow),
+    LowHouseChange = calculate_change(SpreadCAHouseLow)
+  )
+
+SpreadCAHouseMed <- SpreadCAHouseMed %>%
+  mutate(
+    MedHouseGrowthRate = calculate_growth_rate(SpreadCAHouseMed),
+    MedHouseChange = calculate_change(SpreadCAHouseMed)
+  )
+
+SpreadCAHouseHigh <- SpreadCAHouseHigh %>%
+  mutate(
+    HighHouseGrowthRate = calculate_growth_rate(SpreadCAHouseHigh),
+    HighHouseChange = calculate_change(SpreadCAHouseHigh)
+  )
+
+```
+
+```{r Summarize, echo = FALSE, warning = FALSE, message = FALSE}
+
+SummaryCAPermits <- SpreadCAPermits %>%
+  group_by(County.Name) %>%
+  summarize(NumPermits = sum(NumUnits))
+
+SummaryCALabor <- SpreadCALabor %>% subset(select = c(County.Name, LaborGrowthRate, LaborChange))
+
+SummaryCAPopulation <- SpreadCAPopulation %>% subset(select = c(County.Name, PopGrowthRate, PopChange))
+
+SummaryCARentLow <- SpreadCARentLow %>% subset(select = c(County.Name, LowRentGrowthRate, LowRentChange))
+
+SummaryCARentMed <- SpreadCARentMed %>% subset(select = c(County.Name, MedRentGrowthRate, MedRentChange))
+
+SummaryCARentHigh <- SpreadCARentHigh %>% subset(select = c(County.Name, HighRentGrowthRate, HighRentChange))
+
+SummaryCAHouseLow <- SpreadCAHouseLow %>% subset(select = c(County.Name, LowHouseGrowthRate, LowHouseChange))
+
+SummaryCAHouseMed <- SpreadCAHouseMed %>% subset(select = c(County.Name, MedHouseGrowthRate, MedHouseChange))
+
+SummaryCAHouseHigh <- SpreadCAHouseHigh %>% subset(select = c(County.Name, HighHouseGrowthRate, HighHouseChange))
+
+```
+
+```{r Combine Tables, echo = FALSE, warning = FALSE, message = FALSE}
+# Need to figure out better way to do this
+
+MergeCA1 <- merge(SummaryCAPermits, SummaryCALabor)
+MergeCA2 <- merge(SummaryCAPopulation, SummaryCARentMed)
+MergeCA3 <- merge(SummaryCARentHigh, SummaryCARentLow)
+MergeCA4 <- merge(SummaryCAHouseLow, SummaryCAHouseMed)
+MergeCA5 <- merge(SummaryCAHouseHigh, MergeCA4)
+MergeCA6 <- merge(MergeCA1, MergeCA2)
+MergeCA7 <- merge(MergeCA6, MergeCA3)
+
+DataTable <- merge(MergeCA7, MergeCA5)
+
+```
+
+```{r Second Calculations, echo = FALSE, warning = FALSE, message = FALSE}
+
+DataTable <- DataTable %>%
+  mutate(LaborRatio = LaborChange/NumPermits,
+         PopRatio = PopChange/NumPermits)
+
+```
+
+```{r Correlation Matrix, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
+
+CorrelationMatrix <- DataTable %>% subset(select = -c(County.Name))
+
+chart.Correlation(CorrelationMatrix, histogram = TRUE)
+
+plot(CorrelationMatrix$LaborRatio, CorrelationMatrix$RentChange)
+
+```
+
+```{r Chunk 9, echo = FALSE, warning = FALSE, message = FALSE}
+us_states <- states(cb = FALSE, class = "sf") 
+
+ca_state <- us_states %>% filter(STUSPS == "CA")
+us_states <- 
+  subset(us_states, 
+         !NAME %in% c(
+           "United States Virgin Islands",
+           "Commonwealth of the Northern Mariana Islands",
+           "Guam",
+           "American Samoa",
+           "Puerto Rico",
+           "Alaska",
+           "Hawaii",
+           "California"
+         ))
+
+
+ca_counties <- counties("CA")
+
+ca_county_names <- list_counties("CA")
+ca_water <- area_water("CA", ca_county_names)
+
+counties_for_water <- c("San Francisco County", "San Mateo County", 
+                        "Alameda County", "Contra Costa County", 
+                        "Sonoma County", 
+                        "Santa Cruz County","Monterey County")
+ca_water_2 <- area_water("CA",counties_for_water)
+
+ca_places <- county_subdivisions(state = c("CA"))
+nv_places <- county_subdivisions(state = c("NV"))
+or_places <- county_subdivisions(state = c("OR"))
+ut_places <- county_subdivisions(state = c("UT"))
+az_places <- county_subdivisions(state = c("AZ"))
+id_places <- county_subdivisions(state = c("ID"))
+
+county_subdivisions_map <- rbind(ca_places, nv_places, or_places, ut_places,az_places,id_places)
+
+ca_counties <- st_transform(ca_counties, crs = 4326) #2163 #4326
+us_states <- st_transform(us_states, crs = 4326)
+
+ca_counties_bb <- st_as_sfc(st_bbox(ca_counties))
+ca_counties_bb <- st_buffer(ca_counties_bb, dist = 10000)
+
+ca_counties$values <- runif(nrow(ca_counties))
+
+ca_counties_for_merge <- ca_counties %>% mutate(County.Name = NAMELSAD)
+```
+
+```{r Merge Map and Data, echo = FALSE, warning = FALSE, message = FALSE}
+
+MapDataTable <- merge(DataTable, ca_counties_for_merge)
+
+MapDataTable <- MapDataTable %>% mutate(LaborRatioSimple = 
+                                          case_when(
+                                            LaborRatio < 0 ~ '-2',
+                                            LaborRatio <= "1" & LaborRatio >= "0" ~ '-1',
+                                            LaborRatio >= "4" ~ '4',
+                                            TRUE ~ as.character(LaborRatio)
+                                          ),
+                                        LaborRatioLegend = 
+                                          case_when(
+                                            LaborRatio < 0 ~ '-2',
+                                            LaborRatio <= "1" & LaborRatio >= "0" ~ '-1',
+                                            LaborRatio <= "1" ~ '-4',
+                                            LaborRatio >= "4" ~ '4',
+                                            TRUE ~ as.character(LaborRatio)
+                                          ),
+                                        LaborRatioRounded = as.factor(round(as.numeric(LaborRatioSimple))))
+
+
+```
+
+```{r Plot Variables, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
+reds <- tmaptools::get_brewer_pal("RdGy", 9)
+cols <- c(reds[8], reds[7], reds[4], reds[3], reds[2], reds[1])
+```
+
+```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=7}
+MapDataTableForLabels <- MapDataTable %>% filter(LaborRatio >= 2.5) %>%
+  mutate(County = str_sub(County.Name,end = -7))
+
+ggplot() + 
+  geom_sf(data = us_states, fill = "grey20", color = NA, size = 2) +
+  geom_sf(data = MapDataTable, 
+          aes(fill = LaborRatioRounded, 
+              geometry = geometry), color = NA) +
+  geom_sf(data = county_subdivisions_map, 
+          aes(geometry = geometry), fill = NA, color = "white") + #grey10
+  geom_sf(data = ca_water_2, 
+          aes(geometry = geometry), fill = "white", color = NA) +
+  geom_sf(data = ca_state, 
+          aes(geometry = geometry), fill = NA, color = "white", size = .75) +
+  geom_sf(data = us_states, fill = NA, color = 'black', size = .9) +
+  labs(fill = "Workers:Permits",
+       caption = "Time: 2009-2019") +
+  scale_fill_manual(breaks = c("-2","-1","1","2","3","4"),
+                    labels = c("Lost Workers",
+                               "\u22641:1",
+                               ">1:1",
+                               ">2:1",
+                               ">3:1",
+                               ">4:1"),
+                    values = cols) +
   theme_void() +
-  theme(legend.position = c(0.5, 0.07),
-        legend.direction = "horizontal",
+  theme(legend.title = element_text(size = 12, face = "bold"),
+        legend.text = element_text(size = 12),
+        legend.position = c(.17, .12),
+        legend.direction = "vertical",
         legend.key.width = unit(10, "mm"),
-        plot.background = element_rect(fill = "#BFD5E3")) +
-  coord_sf(xlim = st_bbox(ky_districts_2163_bb)[c(1, 3)],
-           ylim = st_bbox(ky_districts_2163_bb)[c(2, 4)])
+        plot.background = element_rect(fill = NULL)) +
+  coord_sf(xlim = st_bbox(ca_counties_bb)[c(1, 3)],
+           ylim = st_bbox(ca_counties_bb)[c(2, 4)])
 
-ggm4
 
 ```
+
+```{r Workers:Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+
+FilteredDataTable <- DataTable %>% 
+  filter(LaborRatio >= 0) %>% 
+  mutate(TileSplit = ifelse(LaborRatio > 1, 2, 1))
+
+RentChanges <- subset(FilteredDataTable, select = c(County.Name, 
+                                                    LaborRatio,
+                                                    LowRentChange,
+                                                    MedRentChange,
+                                                    HighRentChange,
+                                                    TileSplit))
+
+RentChangesMelt <- RentChanges %>% 
+  reshape2::melt(id.vars = c("County.Name","LaborRatio","TileSplit"),
+                 measure.vars = c("LowRentChange",
+                                  "MedRentChange",
+                                  "HighRentChange"))
+
+RentChangesSummary <- RentChangesMelt %>%
+  group_by(TileSplit, variable) %>%
+  summarize(AvgChange = mean(value))
+
+RentChange.labs <- c("Lower Quartile",
+                     "Median Quartile",
+                     "Upper Quartile")
+names(RentChange.labs) <- c("LowRentChange",
+                            "MedRentChange",
+                            "HighRentChange")
+
+col1 <- "#AAAAAA" 
+col2 <- "#C7433F"
+
+ggplot(RentChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
+  geom_bar(aes(fill = as.factor(TileSplit)), 
+           stat = 'identity', 
+           color = 'black',
+           size = 1) +
+  geom_point(data = RentChangesMelt, aes(x = TileSplit, y = value), 
+             alpha=.75, 
+             color = 'black') +
+  labs(title = "Change in Rent by County",
+       subtitle = "Time: 2009-2019",
+       x = NULL,
+       y = "Change") + 
+  scale_fill_manual(name = NULL,
+                    breaks = c("1","2"),
+                    labels = c("Workers < Permits", "Workers > Permits"),
+                    values = c(col1, col2)) +
+  scale_x_discrete(breaks=c("1","2"),
+                   labels=NULL) +
+  scale_y_continuous(labels=scales::dollar_format()) +
+  facet_wrap(~variable, labeller = labeller(variable = RentChange.labs)) +
+  theme_ipsum(grid="Y") +
+  theme(legend.position = "bottom")
+
+```
+
+```{r Workers:Permits and House, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+
+FilteredDataTable <- DataTable %>% 
+  filter(LaborRatio >= 0) %>% 
+  mutate(TileSplit = ifelse(LaborRatio > 1, 2, 1))
+
+HouseChanges <- subset(FilteredDataTable, select = c(County.Name, 
+                                                     LaborRatio,
+                                                     LowHouseChange,
+                                                     MedHouseChange,
+                                                     HighHouseChange,
+                                                     TileSplit))
+
+HouseChangesMelt <- HouseChanges %>% 
+  reshape2::melt(id.vars = c("County.Name","LaborRatio","TileSplit"),
+                 measure.vars = c("LowHouseChange",
+                                  "MedHouseChange",
+                                  "HighHouseChange"))
+
+HouseChangesSummary <- HouseChangesMelt %>%
+  group_by(TileSplit, variable) %>%
+  summarize(AvgChange = mean(value))
+
+HouseChange.labs <- c("Lower Quartile",
+                      "Median Quartile",
+                      "Upper Quartile")
+names(HouseChange.labs) <- c("LowHouseChange",
+                             "MedHouseChange",
+                             "HighHouseChange")
+
+col1 <- "#AAAAAA" 
+col2 <- "#C7433F"
+
+ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
+  geom_bar(aes(fill = as.factor(TileSplit)), 
+           stat = 'identity', 
+           color = 'black',
+           size = 1) +
+  geom_point(data = HouseChangesMelt, aes(x = TileSplit, y = value), 
+             alpha=.75, 
+             color = 'black') +
+  labs(title = "Change in Home Value by County",
+       subtitle = "Time: 2009-2019",
+       x = NULL,
+       y = "Change") + 
+  scale_fill_manual(name = NULL,
+                    breaks = c("1","2"),
+                    labels = c("Workers < Permits", "Workers > Permits"),
+                    values = c(col1, col2)) +
+  scale_x_discrete(breaks=c("1","2"),
+                   labels=NULL) +
+  scale_y_continuous(labels=scales::dollar_format()) +
+  facet_wrap(~variable, labeller = labeller(variable = HouseChange.labs)) +
+  theme_ipsum(grid="Y") +
+  theme(legend.position = "bottom")
+
+```
+```{r test map, echo = FALSE}
+
+# pal <- colorNumeric(
+#   palette = "RdGy",
+#   domain = as.numeric(MapDataTable$LaborRatioLegend),
+#   reverse = TRUE
+# )
+# 
+# 
+# MapDataTableForLeaf <- MapDataTable %>% filter(as.numeric(LaborRatioSimple) > 0)
+# 
+# leaflet() %>%
+#   addProviderTiles("CartoDB.PositronNoLabels") %>%
+#   addPolygons(data = MapDataTable$geometry, 
+#               fillColor = pal(as.numeric(MapDataTable$LaborRatioSimple)), 
+#               color = "#FFFFFF", # you need to use hex colors
+#               fillOpacity = .9,
+#               weight = .3, 
+#               smoothFactor = 0)%>%
+#   addLegend(pal = pal, 
+#             values = as.numeric(MapDataTable$LaborRatioSimple), 
+#             position = "bottomleft", 
+#             title = "Percent of Households<br>above $200k",
+#             labFormat = labelFormat(suffix = "%")) 
+# 
+
+```
+
 
 </div>
 <div class="col-sm-6">
