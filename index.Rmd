@@ -318,6 +318,23 @@ MapDataTable <- MapDataTable %>% mutate(LaborRatioSimple =
 ```{r Plot Variables, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
 reds <- tmaptools::get_brewer_pal("RdGy", 9)
 cols <- c(reds[8], reds[7], reds[4], reds[3], reds[2], reds[1])
+
+RentChange.labs <- c("Lower Quartile",
+                     "Median Quartile",
+                     "Upper Quartile")
+names(RentChange.labs) <- c("LowRentChange",
+                            "MedRentChange",
+                            "HighRentChange")
+
+HouseChange.labs <- c("Lower Quartile",
+                      "Median Quartile",
+                      "Upper Quartile")
+names(HouseChange.labs) <- c("LowHouseChange",
+                             "MedHouseChange",
+                             "HighHouseChange")
+
+col1 <- "#AAAAAA" 
+col2 <- "#C7433F"
 ```
 
 ```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=7}
@@ -385,16 +402,6 @@ RentChangesSummary <- RentChangesMelt %>%
   group_by(TileSplit, variable) %>%
   summarize(AvgChange = mean(value))
 
-RentChange.labs <- c("Lower Quartile",
-                     "Median Quartile",
-                     "Upper Quartile")
-names(RentChange.labs) <- c("LowRentChange",
-                            "MedRentChange",
-                            "HighRentChange")
-
-col1 <- "#AAAAAA" 
-col2 <- "#C7433F"
-
 ggplot(RentChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
   geom_bar(aes(fill = as.factor(TileSplit)), 
            stat = 'identity', 
@@ -422,10 +429,6 @@ ggplot(RentChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
 
 ```{r Workers:Permits and House, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
 
-FilteredDataTable <- DataTable %>% 
-  filter(LaborRatio >= 0) %>% 
-  mutate(TileSplit = ifelse(LaborRatio > 1, 2, 1))
-
 HouseChanges <- subset(FilteredDataTable, select = c(County.Name, 
                                                      LaborRatio,
                                                      LowHouseChange,
@@ -442,16 +445,6 @@ HouseChangesMelt <- HouseChanges %>%
 HouseChangesSummary <- HouseChangesMelt %>%
   group_by(TileSplit, variable) %>%
   summarize(AvgChange = mean(value))
-
-HouseChange.labs <- c("Lower Quartile",
-                      "Median Quartile",
-                      "Upper Quartile")
-names(HouseChange.labs) <- c("LowHouseChange",
-                             "MedHouseChange",
-                             "HighHouseChange")
-
-col1 <- "#AAAAAA" 
-col2 <- "#C7433F"
 
 ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
   geom_bar(aes(fill = as.factor(TileSplit)), 
