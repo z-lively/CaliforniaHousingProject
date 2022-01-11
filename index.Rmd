@@ -337,7 +337,7 @@ col1 <- "#AAAAAA"
 col2 <- "#C7433F"
 ```
 
-```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=10}
+```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=11}
 MapDataTableForLabels <- MapDataTable %>% filter(LaborRatio >= 2.5) %>%
   mutate(County = str_sub(County.Name,end = -7))
 
@@ -471,7 +471,7 @@ HousePlot <- ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
 
 ```
 
-```{r Combined Rent and House Plot,echo = FALSE, message=FALSE,warning = FALSE, fig.height=14, fig.width = 7}
+```{r Combined Rent and House Plot,echo = FALSE, message=FALSE,warning = FALSE, fig.height=11, fig.width = 7}
 library(cowplot)
 
 plot_grid(RentPlot + 
