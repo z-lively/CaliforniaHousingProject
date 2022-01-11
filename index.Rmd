@@ -357,6 +357,9 @@ ggplot() +
 
 ```
 
+</div>
+<div class="col-sm-6">
+
 ```{r Workers:Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
 
 FilteredDataTable <- DataTable %>% 
@@ -499,11 +502,6 @@ ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
 # 
 
 ```
-
-
-</div>
-<div class="col-sm-6">
-
 
 </a>
 </div>
