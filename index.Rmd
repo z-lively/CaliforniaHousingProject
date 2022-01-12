@@ -34,6 +34,8 @@ library(maptools)
 library(PerformanceAnalytics)
 library(data.table)
 library(hrbrthemes)
+library(cowplot)
+
 
 options(tigris_use_cache = TRUE)
 ```
@@ -77,6 +79,10 @@ CARENTHIGH <- "B25059_001"
 CAHOUSELOW <- "B25076_001"
 CAHOUSEMED <- "B25077_001"
 CAHOUSEHIGH <- "B25078_001"
+CAOWNERWHITE <- "B25003A_002"
+CAOWNERBLACK <- "B25003B_002"
+CAOWNERLATINO <- "B25003I_002"
+
 
 CAPopulation <- get_acs_data(ACSYears, CAPOPULATION)
 CARentLow <- get_acs_data(ACSYears, CARENTLOW)
@@ -85,6 +91,10 @@ CARentHigh <- get_acs_data(ACSYears, CARENTHIGH)
 CAHouseLow <- get_acs_data(ACSYears, CAHOUSELOW)
 CAHouseMed <- get_acs_data(ACSYears, CAHOUSEMED)
 CAHouseHigh <- get_acs_data(ACSYears, CAHOUSEHIGH)
+CAOwnerWhite <- get_acs_data(ACSYears, CAOWNERWHITE)
+CAOwnerBlack <- get_acs_data(ACSYears, CAOWNERBLACK)
+CAOwnerLatino <- get_acs_data(ACSYears, CAOWNERLATINO)
+
 
 ```
 ```{r Clean Data, echo = FALSE, warning = FALSE, message = FALSE}
@@ -109,6 +119,10 @@ CleanCAHouseLow <- CAHouseLow
 CleanCAHouseMed <- CAHouseMed
 CleanCAHouseHigh <- CAHouseHigh
 
+CleanCAOwnerWhite <- CAOwnerWhite
+CleanCAOwnerBlack <- CAOwnerBlack
+CleanCAOwnerLatino <- CAOwnerLatino
+
 
 ```
 ```{r Spread Data, echo = FALSE, warning = FALSE, message = FALSE}
@@ -124,6 +138,9 @@ SpreadCARentHigh <- spread_data(CleanCARentHigh)
 SpreadCAHouseLow <- spread_data(CleanCAHouseLow)
 SpreadCAHouseMed <- spread_data(CleanCAHouseMed)
 SpreadCAHouseHigh <- spread_data(CleanCAHouseHigh)
+SpreadCAOwnerWhite <- spread_data(CleanCAOwnerWhite)
+SpreadCAOwnerBlack <- spread_data(CleanCAOwnerBlack)
+SpreadCAOwnerLatino <- spread_data(CleanCAOwnerLatino)
 ```
 ```{r Chunk 2, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -179,6 +196,24 @@ SpreadCAHouseHigh <- SpreadCAHouseHigh %>%
     HighHouseChange = calculate_change(SpreadCAHouseHigh)
   )
 
+SpreadCAOwnerWhite <- SpreadCAOwnerWhite %>%
+  mutate(
+    WhiteOwnerGrowthRate = calculate_growth_rate(SpreadCAOwnerWhite),
+    WhiteOwnerChange = calculate_change(SpreadCAOwnerWhite)
+  )
+
+SpreadCAOwnerBlack <- SpreadCAOwnerBlack %>%
+  mutate(
+    BlackOwnerGrowthRate = calculate_growth_rate(SpreadCAOwnerBlack),
+    BlackOwnerChange = calculate_change(SpreadCAOwnerBlack)
+  )
+
+SpreadCAOwnerLatino <- SpreadCAOwnerLatino %>%
+  mutate(
+    LatinoOwnerGrowthRate = calculate_growth_rate(SpreadCAOwnerLatino),
+    LatinoOwnerChange = calculate_change(SpreadCAOwnerLatino)
+  )
+
 ```
 ```{r Summarize, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -202,6 +237,12 @@ SummaryCAHouseMed <- SpreadCAHouseMed %>% subset(select = c(County.Name, MedHous
 
 SummaryCAHouseHigh <- SpreadCAHouseHigh %>% subset(select = c(County.Name, HighHouseGrowthRate, HighHouseChange))
 
+SummaryCAOwnerWhite <- SpreadCAOwnerWhite %>% subset(select = c(County.Name, WhiteOwnerGrowthRate, WhiteOwnerChange))
+
+SummaryCAOwnerBlack <- SpreadCAOwnerBlack %>% subset(select = c(County.Name, BlackOwnerGrowthRate, BlackOwnerChange))
+
+SummaryCAOwnerLatino<- SpreadCAOwnerLatino %>% subset(select = c(County.Name, LatinoOwnerGrowthRate, LatinoOwnerChange))
+
 ```
 ```{r Combine Tables, echo = FALSE, warning = FALSE, message = FALSE}
 # Need to figure out better way to do this
@@ -213,8 +254,11 @@ MergeCA4 <- merge(SummaryCAHouseLow, SummaryCAHouseMed)
 MergeCA5 <- merge(SummaryCAHouseHigh, MergeCA4)
 MergeCA6 <- merge(MergeCA1, MergeCA2)
 MergeCA7 <- merge(MergeCA6, MergeCA3)
+MergeCA8 <- merge(SummaryCAOwnerWhite, SummaryCAOwnerBlack)
+MergeCA9 <- merge(MergeCA8, SummaryCAOwnerLatino)
+MergeCA10 <- merge(MergeCA9, MergeCA5)
 
-DataTable <- merge(MergeCA7, MergeCA5)
+DataTable <- merge(MergeCA7, MergeCA10)
 
 ```
 ```{r Second Calculations, echo = FALSE, warning = FALSE, message = FALSE}
@@ -322,6 +366,13 @@ names(HouseChange.labs) <- c("LowHouseChange",
                              "MedHouseChange",
                              "HighHouseChange")
 
+OwnerGrowth.labs <- c("White",
+                      "Black",
+                      "Latino")
+names(OwnerGrowth.labs) <- c("WhiteOwnerGrowthRate",
+                             "BlackOwnerGrowthRate",
+                             "LatinoOwnerGrowthRate")
+
 col1 <- "#AAAAAA" 
 col2 <- "#C7433F"
 ```
@@ -409,6 +460,8 @@ RentPlot <- ggplot(RentChangesSummary, aes(x = as.factor(TileSplit), y = AvgChan
   theme_ipsum(grid="Y") +
   theme(legend.position = "bottom")
 
+RentPlot
+
 ```
 ```{r Workers:Permits and House, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
 
@@ -452,9 +505,9 @@ HousePlot <- ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
   theme_ipsum(grid="Y") +
   theme(legend.position = "bottom")
 
+HousePlot
 ```
-```{r Combined Rent and House Plot,echo = FALSE, message=FALSE,warning = FALSE, fig.height=9, fig.width = 7}
-library(cowplot)
+```{r Combined Rent and House Plot,echo = FALSE, message=FALSE,warning = FALSE, fig.height=9, fig.width = 7, include = FALSE}
 
 plot_grid(RentPlot + 
             theme(legend.position = 'none',
@@ -462,6 +515,50 @@ plot_grid(RentPlot +
           HousePlot + 
             theme(axis.title.y = element_blank()), 
           cols = 1)
+
+```
+```{r Home Owners, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+
+OwnerChanges <- subset(FilteredDataTable, select = c(County.Name, 
+                                                     LaborRatio,
+                                                     WhiteOwnerGrowthRate,
+                                                     BlackOwnerGrowthRate,
+                                                     LatinoOwnerGrowthRate,
+                                                     TileSplit))
+
+OwnerChangesMelt <- OwnerChanges %>% 
+  reshape2::melt(id.vars = c("County.Name","LaborRatio","TileSplit"),
+                 measure.vars = c("WhiteOwnerGrowthRate",
+                                  "BlackOwnerGrowthRate",
+                                  "LatinoOwnerGrowthRate"))
+
+OwnerChangesSummary <- OwnerChangesMelt %>%
+  filter(County.Name != 'Alpine County') %>%
+  group_by(TileSplit, variable) %>%
+  summarize(AvgChange = mean(value))
+
+ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
+  geom_bar(aes(fill = as.factor(TileSplit)), 
+           stat = 'identity', 
+           color = 'black',
+           size = 1) +
+  geom_point(data = OwnerChangesMelt, aes(x = TileSplit, y = value), 
+             alpha=.75, 
+             color = 'black') +
+  labs(title = "Growth in Home Owners by County",
+       subtitle = "Time: 2009-2019",
+       x = NULL,
+       y = "Growth") + 
+  scale_fill_manual(name = NULL,
+                    breaks = c("1","2"),
+                    labels = c("Workers < Permits", "Workers > Permits"),
+                    values = c(col1, col2)) +
+  scale_x_discrete(breaks=c("1","2"),
+                   labels=NULL) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  facet_wrap(~variable, labeller = labeller(variable = OwnerGrowth.labs)) +
+  theme_ipsum(grid="Y") +
+  theme(legend.position = "bottom")
 
 ```
 ```{r test map, echo = FALSE, include = FALSE}
