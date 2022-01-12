@@ -414,7 +414,7 @@ ggplot() +
 
 
 ```
-```{r Workers:Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+```{r Workers Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
 
 FilteredDataTable <- DataTable %>% 
   filter(LaborRatio >= 0) %>% 
@@ -463,7 +463,7 @@ RentPlot <- ggplot(RentChangesSummary, aes(x = as.factor(TileSplit), y = AvgChan
 RentPlot
 
 ```
-```{r Workers:Permits and House, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+```{r Workers Permits and House, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
 
 HouseChanges <- subset(FilteredDataTable, select = c(County.Name, 
                                                      LaborRatio,
