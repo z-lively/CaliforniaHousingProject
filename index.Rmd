@@ -585,7 +585,7 @@ ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
 
 This is the beginnings of an interactive version of the Labor Force Size to Permits by County map.
 
-```{r test map, echo = FALSE, include = TRUE, message = FALSE, warning = TRUE}
+```{r test map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
 
 pal <- colorNumeric(
   palette = rev(cols),
@@ -610,7 +610,7 @@ library(leaflet)
 MapDataTableForLeaf <- MapDataTable %>% filter(as.numeric(LaborRatioSimple) > 0)
 
 
-ca_water_na <- ca_water %>% drop_na(FULLNAME)
+ca_water_na <- ca_water %>% drop_na(FULLNAME) %>% filter(AWATER > 10000000)
   
   
 library(leaflet.extras)
