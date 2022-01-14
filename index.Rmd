@@ -81,7 +81,6 @@ CAOWNERWHITE <- "B25003A_002"
 CAOWNERBLACK <- "B25003B_002"
 CAOWNERLATINO <- "B25003I_002"
 
-
 CAPopulation <- get_acs_data(ACSYears, CAPOPULATION)
 CARentLow <- get_acs_data(ACSYears, CARENTLOW)
 CARentMed <- get_acs_data(ACSYears, CARENTMED)
@@ -119,7 +118,6 @@ CleanCAHouseHigh <- CAHouseHigh
 CleanCAOwnerWhite <- CAOwnerWhite
 CleanCAOwnerBlack <- CAOwnerBlack
 CleanCAOwnerLatino <- CAOwnerLatino
-
 
 ```
 ```{r Spread Data, echo = FALSE, warning = FALSE, message = FALSE}
@@ -381,7 +379,7 @@ Shows CA county subdivisions with a ratio for change in labor force size to numb
 
 ```{r Labor Force to Permits Interactive Map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
 
-leaflet() %>%
+leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
   addPolygons(data = MapDataTable$geometry,
               fillColor = factorPal(MapDataTable$LaborRatioRounded),
               color = FALSE, # you need to use hex colors
