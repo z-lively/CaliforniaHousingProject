@@ -313,8 +313,9 @@ id_places <- county_subdivisions(state = c("ID"))
 
 county_subdivisions_map <- rbind(ca_places, nv_places, or_places, ut_places,az_places,id_places)
 
-ca_counties <- st_transform(ca_counties, crs = 4326) #2163 #4326
-us_states <- st_transform(us_states, crs = 4326)
+ca_counties <- st_transform(ca_counties, crs = 4326) #, crs = 4326
+us_states <- st_transform(us_states, crs = 4326) # , crs = 4326
+county_subdivisions_map <- st_transform(county_subdivisions_map, crs = 4326)
 
 ca_counties_bb <- st_as_sfc(st_bbox(ca_counties))
 ca_counties_bb <- st_buffer(ca_counties_bb, dist = 10000)
@@ -579,32 +580,66 @@ ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
   theme(legend.position = "bottom")
 
 ```
-```{r test map, echo = FALSE, include = FALSE}
 
-# pal <- colorNumeric(
-#   palette = "RdGy",
-#   domain = as.numeric(MapDataTable$LaborRatioLegend),
-#   reverse = TRUE
-# )
-# 
-# 
-# MapDataTableForLeaf <- MapDataTable %>% filter(as.numeric(LaborRatioSimple) > 0)
-# 
-# leaflet() %>%
-#   addProviderTiles("CartoDB.PositronNoLabels") %>%
-#   addPolygons(data = MapDataTable$geometry, 
-#               fillColor = pal(as.numeric(MapDataTable$LaborRatioSimple)), 
-#               color = "#FFFFFF", # you need to use hex colors
-#               fillOpacity = .9,
-#               weight = .3, 
-#               smoothFactor = 0)%>%
-#   addLegend(pal = pal, 
-#             values = as.numeric(MapDataTable$LaborRatioSimple), 
-#             position = "bottomleft", 
-#             title = "Percent of Households<br>above $200k",
-#             labFormat = labelFormat(suffix = "%")) 
-# 
+# Interactive Map
 
+This is the beginnings of an interactive version of the Labor Force Size to Permits by County map.
+
+```{r test map, echo = FALSE, include = TRUE, message = FALSE, warning = TRUE}
+
+pal <- colorNumeric(
+  palette = rev(cols),
+  domain = as.numeric(MapDataTable$LaborRatioRounded),
+  reverse = TRUE
+)
+
+library(leaflet)
+
+  # geom_sf(data = us_states, fill = "grey20", color = NA, size = 2) +
+  # geom_sf(data = MapDataTable, 
+  #         aes(fill = LaborRatioRounded, 
+  #             geometry = geometry), color = NA) +
+  # geom_sf(data = county_subdivisions_map, 
+  #         aes(geometry = geometry), fill = NA, color = "white") + #grey10
+  # geom_sf(data = ca_water_2, 
+  #         aes(geometry = geometry), fill = "white", color = NA) +
+  # geom_sf(data = ca_state, 
+  #         aes(geometry = geometry), fill = NA, color = "white", size = .75) +
+  # geom_sf(data = us_states, fill = NA, color = 'black', size = .9) 
+
+MapDataTableForLeaf <- MapDataTable %>% filter(as.numeric(LaborRatioSimple) > 0)
+
+
+ca_water_na <- ca_water %>% drop_na(FULLNAME)
+  
+  
+library(leaflet.extras)
+
+leaflet() %>%
+  addPolygons(data = MapDataTable$geometry,
+              fillColor = pal(as.numeric(MapDataTable$LaborRatioRounded)),
+              color = FALSE, # you need to use hex colors
+              fillOpacity = 1,
+              weight = 0.4 ) %>%
+  addPolygons(data = ca_places$geometry,
+              fill = FALSE,
+              color = "#000000", 
+              fillOpacity = 1,
+              weight = 0.8) %>% 
+  addPolygons(data = ca_water_na$geometry,
+              fillColor = "#000000",
+              color = FALSE, # you need to use hex colors
+              fillOpacity = 1,
+              weight = 2) %>%
+  setMapWidgetStyle(list(background= "black")) 
+
+
+
+  # addLegend(pal = pal,
+  #           values = as.numeric(MapDataTable$LaborRatioSimple),
+  #           position = "bottomleft",
+  #           title = "Percent of Households<br>above $200k",
+  #           labFormat = labelFormat(suffix = "%")) %>%
 ```
 
 </a>
