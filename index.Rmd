@@ -589,38 +589,53 @@ This is the beginnings of an interactive version of the Labor Force Size to Perm
 
 pal <- colorNumeric(
   palette = rev(cols),
-  domain = as.numeric(MapDataTable$LaborRatioRounded),
+  domain = ordered(as.factor(MapDataTable$LaborRatioRounded)),
   reverse = TRUE
 )
 
 library(leaflet)
 
-  # geom_sf(data = us_states, fill = "grey20", color = NA, size = 2) +
-  # geom_sf(data = MapDataTable, 
-  #         aes(fill = LaborRatioRounded, 
-  #             geometry = geometry), color = NA) +
-  # geom_sf(data = county_subdivisions_map, 
-  #         aes(geometry = geometry), fill = NA, color = "white") + #grey10
-  # geom_sf(data = ca_water_2, 
-  #         aes(geometry = geometry), fill = "white", color = NA) +
-  # geom_sf(data = ca_state, 
-  #         aes(geometry = geometry), fill = NA, color = "white", size = .75) +
-  # geom_sf(data = us_states, fill = NA, color = 'black', size = .9) 
+# geom_sf(data = us_states, fill = "grey20", color = NA, size = 2) +
+# geom_sf(data = MapDataTable, 
+#         aes(fill = LaborRatioRounded, 
+#             geometry = geometry), color = NA) +
+# geom_sf(data = county_subdivisions_map, 
+#         aes(geometry = geometry), fill = NA, color = "white") + #grey10
+# geom_sf(data = ca_water_2, 
+#         aes(geometry = geometry), fill = "white", color = NA) +
+# geom_sf(data = ca_state, 
+#         aes(geometry = geometry), fill = NA, color = "white", size = .75) +
+# geom_sf(data = us_states, fill = NA, color = 'black', size = .9) 
 
 MapDataTableForLeaf <- MapDataTable %>% filter(as.numeric(LaborRatioSimple) > 0)
 
+labels <- c("Lost Workers",
+            "\u22641:1",
+            ">1:1",
+            ">2:1",
+            ">3:1",
+            ">4:1")
 
 ca_water_na <- ca_water %>% drop_na(FULLNAME) %>% filter(AWATER > 10000000)
-  
-  
+
 library(leaflet.extras)
+
+factorPal <- colorFactor(cols, MapDataTable$LaborRatioRounded)
 
 leaflet() %>%
   addPolygons(data = MapDataTable$geometry,
-              fillColor = pal(as.numeric(MapDataTable$LaborRatioRounded)),
+              fillColor = factorPal(MapDataTable$LaborRatioRounded),
               color = FALSE, # you need to use hex colors
               fillOpacity = 1,
               weight = 0.4 ) %>%
+  leaflet::addLegend(position = "bottomleft",
+                     pal = factorPal,
+                     values = MapDataTable$LaborRatioRounded,
+                     title = "Workers:Permits",
+                     opacity = 1,
+                     labFormat = function(type, cuts, p) {
+                       paste0(labels)
+                     }) %>%
   addPolygons(data = ca_places$geometry,
               fill = FALSE,
               color = "#000000", 
@@ -632,14 +647,6 @@ leaflet() %>%
               fillOpacity = 1,
               weight = 2) %>%
   setMapWidgetStyle(list(background= "black")) 
-
-
-
-  # addLegend(pal = pal,
-  #           values = as.numeric(MapDataTable$LaborRatioSimple),
-  #           position = "bottomleft",
-  #           title = "Percent of Households<br>above $200k",
-  #           labFormat = labelFormat(suffix = "%")) %>%
 ```
 
 </a>
