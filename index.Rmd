@@ -295,15 +295,8 @@ us_states <-
 ca_counties <- counties("CA")
 
 ca_county_names <- list_counties("CA")
+
 ca_water <- area_water("CA", ca_county_names)
-
-counties_for_water <- c("San Francisco County", "San Mateo County", 
-                        "Alameda County", "Contra Costa County", 
-                        "Sonoma County", 
-                        "Santa Cruz County","Monterey County")
-ca_water_2 <- area_water("CA",counties_for_water)
-
-
 ca_water_na <- ca_water %>% drop_na(FULLNAME) %>% filter(AWATER > 10000000)
 
 ca_places <- county_subdivisions(state = c("CA"))
@@ -425,8 +418,6 @@ leaflet() %>%
 ```
 
 ```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=11, include = FALSE}
-MapDataTableForLabels <- MapDataTable %>% filter(LaborRatio >= 2.5) %>%
-  mutate(County = str_sub(County.Name,end = -7))
 
 ggplot() + 
   geom_sf(data = us_states, fill = "grey20", color = NA, size = 2) +
@@ -435,7 +426,7 @@ ggplot() +
               geometry = geometry), color = NA) +
   geom_sf(data = county_subdivisions_map, 
           aes(geometry = geometry), fill = NA, color = "white") + #grey10
-  geom_sf(data = ca_water_2, 
+  geom_sf(data = ca_water_na, 
           aes(geometry = geometry), fill = "white", color = NA) +
   geom_sf(data = ca_state, 
           aes(geometry = geometry), fill = NA, color = "white", size = .75) +
@@ -624,6 +615,43 @@ ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
   theme(legend.position = "bottom")
 
 ```
+
+# Workers Per Permit by County's Rank in Worker Growth
+
+Shows workers per permit ratio for each county. Counties are ordered from slowest worker growth (left side) to fastest worker growth (right side). Data is from 2009-2019.
+
+```{r Growth Speed, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+
+LaborGrowth <- subset(FilteredDataTable, select = c(County.Name, 
+                                                    LaborRatio,
+                                                    LaborChange,
+                                                    LaborGrowthRate,
+                                                    TileSplit))
+LaborGrowth <- LaborGrowth %>%
+  arrange(LaborGrowthRate) %>%
+  mutate(LaborGrowthRank = row_number())
+
+ggplot(LaborGrowth, aes(x = as.factor(LaborGrowthRank), y = LaborRatio)) +
+  geom_bar(aes(fill = as.factor(TileSplit)), 
+           stat = 'identity', 
+           color = 'black',
+           size = 1) +
+  labs(title = "Workers Per Permit by\nCounty's Rank in Worker Growth",
+       subtitle = "Time: 2009-2019",
+       x = NULL,
+       y = "Workers Per Permit") + 
+  scale_fill_manual(name = NULL,
+                    breaks = c("1","2"),
+                    labels = c("Workers < Permits", "Workers > Permits"),
+                    values = c(col1, col2)) +
+  scale_x_discrete(breaks=c("6","28"),
+                   labels = c("Slowest Growth", "Fastest Growth")) +
+  scale_y_continuous(breaks = c(1:6)) +
+  theme_ipsum(grid="Y") +
+  theme(legend.position = "bottom")
+
+```
+
 
 
 
