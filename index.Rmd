@@ -26,7 +26,6 @@ library(sf)
 library(rcartocolor)
 library(cowplot)
 library(tigris)
-library(plotly)
 library(rgdal)    # for readOGR and others
 library(sp)       # for spatial objects
 library(leaflet)  # for interactive maps (NOT leafletR here)
@@ -34,7 +33,7 @@ library(maptools)
 library(PerformanceAnalytics)
 library(data.table)
 library(hrbrthemes)
-library(cowplot)
+library(leaflet.extras)
 
 options(tigris_use_cache = TRUE)
 ```
@@ -304,6 +303,9 @@ counties_for_water <- c("San Francisco County", "San Mateo County",
                         "Santa Cruz County","Monterey County")
 ca_water_2 <- area_water("CA",counties_for_water)
 
+
+ca_water_na <- ca_water %>% drop_na(FULLNAME) %>% filter(AWATER > 10000000)
+
 ca_places <- county_subdivisions(state = c("CA"))
 nv_places <- county_subdivisions(state = c("NV"))
 or_places <- county_subdivisions(state = c("OR"))
@@ -324,6 +326,7 @@ ca_counties$values <- runif(nrow(ca_counties))
 
 ca_counties_for_merge <- ca_counties %>% mutate(County.Name = NAMELSAD)
 ```
+
 ```{r Merge Map and Data, echo = FALSE, warning = FALSE, message = FALSE}
 
 MapDataTable <- merge(DataTable, ca_counties_for_merge)
@@ -335,18 +338,11 @@ MapDataTable <- MapDataTable %>% mutate(LaborRatioSimple =
                                             LaborRatio >= "4" ~ '4',
                                             TRUE ~ as.character(LaborRatio)
                                           ),
-                                        LaborRatioLegend = 
-                                          case_when(
-                                            LaborRatio < 0 ~ '-2',
-                                            LaborRatio <= "1" & LaborRatio >= "0" ~ '-1',
-                                            LaborRatio <= "1" ~ '-4',
-                                            LaborRatio >= "4" ~ '4',
-                                            TRUE ~ as.character(LaborRatio)
-                                          ),
-                                        LaborRatioRounded = as.factor(round(as.numeric(LaborRatioSimple))))
+                                        LaborRatioRounded = as.factor(floor(as.numeric(LaborRatioSimple))))
 
 
 ```
+
 ```{r Plot Variables, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
 reds <- tmaptools::get_brewer_pal("RdGy", 9)
 cols <- c(reds[8], reds[7], reds[4], reds[3], reds[2], reds[1])
@@ -374,13 +370,61 @@ names(OwnerGrowth.labs) <- c("WhiteOwnerGrowthRate",
 
 col1 <- "#AAAAAA" 
 col2 <- "#C7433F"
+
+labels <- c("Lost Workers",
+            "\u22641:1",
+            ">1:1",
+            ">2:1",
+            ">3:1",
+            ">4:1")
+
+
+factorPal <- colorFactor(cols, MapDataTable$LaborRatioRounded)
 ```
 
 # Map: Labor Force Size to Number of Permits by County
 
 Shows CA county subdivisions with a ratio for change in labor force size to number of county permits issued from 2009-2019. Labor force size includes employed and unemployed people.
 
-```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=11}
+```{r Labor Force to Permits Interactive Map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+
+leaflet() %>%
+  addPolygons(data = MapDataTable$geometry,
+              fillColor = factorPal(MapDataTable$LaborRatioRounded),
+              color = FALSE, # you need to use hex colors
+              fillOpacity = 1,
+              weight = 0.4,
+              popup = ifelse(MapDataTable$LaborRatio >= 0,
+                             paste0(MapDataTable$County.Name, " gained ", round(MapDataTable$LaborRatio,2)," workers for every housing permit issued from 2009 to 2019.","<br/>","<br/>",
+                                    "Workers Gained: ", MapDataTable$LaborChange, "<br/>",
+                                    "Permits Issued: ", MapDataTable$NumPermits),
+                             paste0(MapDataTable$County.Name, " lost ", abs(round(MapDataTable$LaborRatio,2))," workers for every housing permit issued from 2009 to 2019.","<br/>","<br/>",
+                                    "Workers Lost: ", abs(MapDataTable$LaborChange), "<br/>",
+                                    "Permits Issued: ", MapDataTable$NumPermits)
+              )
+  ) %>%
+  leaflet::addLegend(position = "bottomleft",
+                     pal = factorPal,
+                     values = MapDataTable$LaborRatioRounded,
+                     title = "Workers:Permits",
+                     opacity = 1,
+                     labFormat = function(type, cuts, p) {
+                       paste0(labels)
+                     }) %>%
+  addPolygons(data = ca_places$geometry,
+              fill = FALSE,
+              color = "#000000", 
+              fillOpacity = 1,
+              weight = 0.8) %>% 
+  addPolygons(data = ca_water_na$geometry,
+              fillColor = "#000000",
+              color = FALSE, # you need to use hex colors
+              fillOpacity = 1,
+              weight = 2) %>%
+  setMapWidgetStyle(list(background= "black")) 
+```
+
+```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=11, include = FALSE}
 MapDataTableForLabels <- MapDataTable %>% filter(LaborRatio >= 2.5) %>%
   mutate(County = str_sub(County.Name,end = -7))
 
@@ -581,73 +625,7 @@ ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
 
 ```
 
-# Interactive Map
 
-This is the beginnings of an interactive version of the Labor Force Size to Permits by County map.
-
-```{r test map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
-
-pal <- colorNumeric(
-  palette = rev(cols),
-  domain = ordered(as.factor(MapDataTable$LaborRatioRounded)),
-  reverse = TRUE
-)
-
-library(leaflet)
-
-# geom_sf(data = us_states, fill = "grey20", color = NA, size = 2) +
-# geom_sf(data = MapDataTable, 
-#         aes(fill = LaborRatioRounded, 
-#             geometry = geometry), color = NA) +
-# geom_sf(data = county_subdivisions_map, 
-#         aes(geometry = geometry), fill = NA, color = "white") + #grey10
-# geom_sf(data = ca_water_2, 
-#         aes(geometry = geometry), fill = "white", color = NA) +
-# geom_sf(data = ca_state, 
-#         aes(geometry = geometry), fill = NA, color = "white", size = .75) +
-# geom_sf(data = us_states, fill = NA, color = 'black', size = .9) 
-
-MapDataTableForLeaf <- MapDataTable %>% filter(as.numeric(LaborRatioSimple) > 0)
-
-labels <- c("Lost Workers",
-            "\u22641:1",
-            ">1:1",
-            ">2:1",
-            ">3:1",
-            ">4:1")
-
-ca_water_na <- ca_water %>% drop_na(FULLNAME) %>% filter(AWATER > 10000000)
-
-library(leaflet.extras)
-
-factorPal <- colorFactor(cols, MapDataTable$LaborRatioRounded)
-
-leaflet() %>%
-  addPolygons(data = MapDataTable$geometry,
-              fillColor = factorPal(MapDataTable$LaborRatioRounded),
-              color = FALSE, # you need to use hex colors
-              fillOpacity = 1,
-              weight = 0.4 ) %>%
-  leaflet::addLegend(position = "bottomleft",
-                     pal = factorPal,
-                     values = MapDataTable$LaborRatioRounded,
-                     title = "Workers:Permits",
-                     opacity = 1,
-                     labFormat = function(type, cuts, p) {
-                       paste0(labels)
-                     }) %>%
-  addPolygons(data = ca_places$geometry,
-              fill = FALSE,
-              color = "#000000", 
-              fillOpacity = 1,
-              weight = 0.8) %>% 
-  addPolygons(data = ca_water_na$geometry,
-              fillColor = "#000000",
-              color = FALSE, # you need to use hex colors
-              fillOpacity = 1,
-              weight = 2) %>%
-  setMapWidgetStyle(list(background= "black")) 
-```
 
 </a>
 </div>
