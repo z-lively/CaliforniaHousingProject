@@ -14,7 +14,6 @@ display: none;
 
 <div class="row" style="padding-top: 0px;"> 
 <div class="col-sm-6">
-
 ```{r Load libraries, echo = FALSE, warning = FALSE, message = FALSE}
 setwd("C:/Users/zaliv/OneDrive/Desktop/Data Projects/CaliforniaHousingProject")
 
@@ -262,6 +261,11 @@ DataTable <- DataTable %>%
   mutate(LaborRatio = LaborChange/NumPermits,
          PopRatio = PopChange/NumPermits)
 
+
+FilteredDataTable <- DataTable %>% 
+  filter(LaborRatio >= 0) %>% 
+  mutate(TileSplit = ifelse(LaborRatio > 1, 2, 1))
+
 ```
 ```{r Correlation Matrix, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
 
@@ -295,7 +299,10 @@ ca_counties <- counties("CA")
 ca_county_names <- list_counties("CA")
 
 ca_water <- area_water("CA", ca_county_names)
-ca_water_na <- ca_water %>% drop_na(FULLNAME) %>% filter(AWATER > 10000000)
+
+ca_water_na <- ca_water %>% 
+  drop_na(FULLNAME) %>% 
+  filter(AWATER > 10000000)
 
 ca_places <- county_subdivisions(state = c("CA"))
 nv_places <- county_subdivisions(state = c("NV"))
@@ -373,9 +380,9 @@ labels <- c("Lost Workers",
 factorPal <- colorFactor(cols, MapDataTable$LaborRatioRounded)
 ```
 
-# Map: Labor Force Size to Number of Permits by County
+# **Change in Labor Force Size Per Permit by County**
 
-Shows CA county subdivisions with a ratio for change in labor force size to number of county permits issued from 2009-2019. Labor force size includes employed and unemployed people.
+California county subdivisions with the change in labor force size (workers) per permit issued from 2009-2019. Labor force size includes employed and unemployed people.
 
 ```{r Labor Force to Permits Interactive Map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
 
@@ -386,14 +393,35 @@ leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
               fillOpacity = 1,
               weight = 0.4,
               popup = ifelse(MapDataTable$LaborRatio >= 0,
-                             paste0(MapDataTable$County.Name, " gained ", round(MapDataTable$LaborRatio,2)," workers for every housing permit issued from 2009 to 2019.","<br/>","<br/>",
-                                    "Workers Gained: ", MapDataTable$LaborChange, "<br/>",
-                                    "Permits Issued: ", MapDataTable$NumPermits),
-                             paste0(MapDataTable$County.Name, " lost ", abs(round(MapDataTable$LaborRatio,2))," workers for every housing permit issued from 2009 to 2019.","<br/>","<br/>",
-                                    "Workers Lost: ", abs(MapDataTable$LaborChange), "<br/>",
-                                    "Permits Issued: ", MapDataTable$NumPermits)
-              )
-  ) %>%
+                             paste0(MapDataTable$County.Name, 
+                                    " gained ", 
+                                    prettyNum(round(MapDataTable$LaborRatio,2),
+                                              big.mark = ","),
+                                    " workers for every housing permit issued from 2009 to 2019.",
+                                    "<br/>",
+                                    "<br/>",
+                                    "Workers Gained: ", 
+                                    prettyNum(MapDataTable$LaborChange, 
+                                              big.mark = ","), 
+                                    "<br/>",
+                                    "Permits Issued: ", 
+                                    prettyNum(MapDataTable$NumPermits, 
+                                              big.mark = ",")
+                             ),
+                             paste0(MapDataTable$County.Name, 
+                                    " lost ", 
+                                    prettyNum(abs(round(MapDataTable$LaborRatio,2)), big.mark = ","),
+                                    " workers for every housing permit issued from 2009 to 2019.",
+                                    "<br/>",
+                                    "<br/>",
+                                    "Workers Lost: ", 
+                                    prettyNum(abs(MapDataTable$LaborChange), 
+                                              big.mark = ","), 
+                                    "<br/>",
+                                    "Permits Issued: ", 
+                                    prettyNum(MapDataTable$NumPermits,
+                                              big.mark = ",")
+              ))) %>%
   leaflet::addLegend(position = "bottomleft",
                      pal = factorPal,
                      values = MapDataTable$LaborRatioRounded,
@@ -415,52 +443,11 @@ leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
   setMapWidgetStyle(list(background= "black")) 
 ```
 
-```{r Labor Force Map, echo = FALSE, warning = FALSE, message = FALSE, fig.width=5, fig.height=11, include = FALSE}
-
-ggplot() + 
-  geom_sf(data = us_states, fill = "grey20", color = NA, size = 2) +
-  geom_sf(data = MapDataTable, 
-          aes(fill = LaborRatioRounded, 
-              geometry = geometry), color = NA) +
-  geom_sf(data = county_subdivisions_map, 
-          aes(geometry = geometry), fill = NA, color = "white") + #grey10
-  geom_sf(data = ca_water_na, 
-          aes(geometry = geometry), fill = "white", color = NA) +
-  geom_sf(data = ca_state, 
-          aes(geometry = geometry), fill = NA, color = "white", size = .75) +
-  geom_sf(data = us_states, fill = NA, color = 'black', size = .9) +
-  labs(fill = "Workers:Permits",
-       caption = "Time: 2009-2019") +
-  scale_fill_manual(breaks = c("-2","-1","1","2","3","4"),
-                    labels = c("Lost Workers",
-                               "\u22641:1",
-                               ">1:1",
-                               ">2:1",
-                               ">3:1",
-                               ">4:1"),
-                    values = cols) +
-  theme_void() +
-  theme(legend.title = element_text(size = 12, face = "bold"),
-        legend.text = element_text(size = 12),
-        legend.position = c(.17, .12),
-        legend.direction = "vertical",
-        legend.key.width = unit(10, "mm"),
-        plot.background = element_rect(fill = NULL)) +
-  coord_sf(xlim = st_bbox(ca_counties_bb)[c(1, 3)],
-           ylim = st_bbox(ca_counties_bb)[c(2, 4)])
-
-
-```
-
-# Change in Rent by Permits Issued
+# **Change in Rent by Permits Issued**
 
 Shows rent change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). On average, counties where workers outnumbered permits saw larger rent increases from 2009-2019.
 
-```{r Workers Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
-
-FilteredDataTable <- DataTable %>% 
-  filter(LaborRatio >= 0) %>% 
-  mutate(TileSplit = ifelse(LaborRatio > 1, 2, 1))
+```{r Workers Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE}
 
 RentChanges <- subset(FilteredDataTable, select = c(County.Name, 
                                                     LaborRatio,
@@ -506,11 +493,11 @@ RentPlot
 
 ```
 
-# Change in Home Value by Permits Issued
+# **Change in Home Value by Permits Issued**
 
 Shows home value change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). On average, counties where workers outnumbered permits saw larger increases in home value from 2009-2019.
 
-```{r Workers Permits and House, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+```{r Workers Permits and House, echo = FALSE, warning = FALSE, message = FALSE}
 
 HouseChanges <- subset(FilteredDataTable, select = c(County.Name, 
                                                      LaborRatio,
@@ -554,22 +541,12 @@ HousePlot <- ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
 
 HousePlot
 ```
-```{r Combined Rent and House Plot,echo = FALSE, message=FALSE,warning = FALSE, fig.height=9, fig.width = 7, include = FALSE}
 
-plot_grid(RentPlot + 
-            theme(legend.position = 'none',
-                  axis.title.y = element_blank()),
-          HousePlot + 
-            theme(axis.title.y = element_blank()), 
-          cols = 1)
-
-```
-
-# Growth in Home Owners by Permits Issued
+# **Growth in Home Owners by Permits Issued**
 
 Shows home owner growth for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). On average, counties where workers outnumbered permits saw slower growth in black and Latino home owners from 2009-2019.
 
-```{r Home Owners, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+```{r Home Owners, echo = FALSE, warning = FALSE, message = FALSE}
 
 OwnerChanges <- subset(FilteredDataTable, select = c(County.Name, 
                                                      LaborRatio,
@@ -614,11 +591,11 @@ ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
 
 ```
 
-# Workers Per Permit by County's Rank in Worker Growth
+# **Workers Per Permit by County's Rank in Worker Growth**
 
 Shows workers per permit ratio for each county. Counties are ordered from slowest worker growth (left side) to fastest worker growth (right side). Data is from 2009-2019.
 
-```{r Growth Speed, echo = FALSE, warning = FALSE, message = FALSE, fig.width=7, fig.height=7}
+```{r Growth Speed, echo = FALSE, warning = FALSE, message = FALSE}
 
 LaborGrowth <- subset(FilteredDataTable, select = c(County.Name, 
                                                     LaborRatio,
@@ -649,9 +626,6 @@ ggplot(LaborGrowth, aes(x = as.factor(LaborGrowthRank), y = LaborRatio)) +
   theme(legend.position = "bottom")
 
 ```
-
-
-
 
 </a>
 </div>
