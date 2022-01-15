@@ -13,7 +13,7 @@ display: none;
 </style>
 
 <div class="row" style="padding-top: 0px;"> 
-<div class="col-sm-6">
+<div class="col-sm-8">
 ```{r Load libraries, echo = FALSE, warning = FALSE, message = FALSE}
 setwd("C:/Users/zaliv/OneDrive/Desktop/Data Projects/CaliforniaHousingProject")
 
@@ -384,7 +384,7 @@ factorPal <- colorFactor(cols, MapDataTable$LaborRatioRounded)
 
 California county subdivisions with the change in labor force size (workers) per permit issued from 2009-2019. Labor force size includes employed and unemployed people.
 
-```{r Labor Force to Permits Interactive Map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE}
+```{r Labor Force to Permits Interactive Map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE, out.width="100%"}
 
 leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
   addPolygons(data = MapDataTable$geometry,
@@ -443,9 +443,45 @@ leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
   setMapWidgetStyle(list(background= "black")) 
 ```
 
-# **Change in Rent by Permits Issued**
+# **The Fastest Growing Counties Issued The Fewest Permits Per New Worker**
 
-Shows rent change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). On average, counties where workers outnumbered permits saw larger rent increases from 2009-2019.
+Workers per permit ratio for each county. Counties are ordered from slowest worker growth (left side) to fastest worker growth (right side). Data is from 2009-2019. Analysis only shows counties that grew in workforce from 2009-2019.
+
+```{r Growth Speed, echo = FALSE, warning = FALSE, message = FALSE}
+
+LaborGrowth <- subset(FilteredDataTable, select = c(County.Name, 
+                                                    LaborRatio,
+                                                    LaborChange,
+                                                    LaborGrowthRate,
+                                                    TileSplit))
+LaborGrowth <- LaborGrowth %>%
+  arrange(LaborGrowthRate) %>%
+  mutate(LaborGrowthRank = row_number())
+
+ggplot(LaborGrowth, aes(x = as.factor(LaborGrowthRank), y = LaborRatio)) +
+  geom_bar(aes(fill = as.factor(TileSplit)), 
+           stat = 'identity', 
+           color = 'black',
+           size = 1) +
+  labs(title = "Workers Per Permit by\nCounty's Rank in Worker Growth",
+       subtitle = "Time: 2009-2019",
+       x = NULL,
+       y = "Workers Per Permit") + 
+  scale_fill_manual(name = NULL,
+                    breaks = c("1","2"),
+                    labels = c("Workers < Permits", "Workers > Permits"),
+                    values = c(col1, col2)) +
+  scale_x_discrete(breaks=c("6","28"),
+                   labels = c("Slowest Growth", "Fastest Growth")) +
+  scale_y_continuous(breaks = c(1:6)) +
+  theme_ipsum(grid="Y") +
+  theme(legend.position = "bottom")
+
+```
+
+# **Rent Increased More in Counties Where Workforce Growth Outnumbered Permits Issued**
+
+Rent change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2009-2019. Analysis only shows counties that grew in workforce from 2009-2019.
 
 ```{r Workers Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -493,9 +529,9 @@ RentPlot
 
 ```
 
-# **Change in Home Value by Permits Issued**
+# **Cost of Buying Home Increased More in Counties Where Workforce Growth Outnumbered Permits Issued**
 
-Shows home value change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). On average, counties where workers outnumbered permits saw larger increases in home value from 2009-2019.
+Change in cost of buying home for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2009-2019. Analysis only shows counties that grew in workforce from 2009-2019.
 
 ```{r Workers Permits and House, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -524,7 +560,7 @@ HousePlot <- ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
   geom_point(data = HouseChangesMelt, aes(x = TileSplit, y = value), 
              alpha=.75, 
              color = 'black') +
-  labs(title = "Change in Home Value by County",
+  labs(title = "Change in Home Cost by County",
        subtitle = "Time: 2009-2019",
        x = NULL,
        y = "Change") + 
@@ -542,9 +578,9 @@ HousePlot <- ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
 HousePlot
 ```
 
-# **Growth in Home Owners by Permits Issued**
+# **Black and Latino Homeownership Grew Slower in Counties Where Workforce Growth Outnumbered Permits Issued**
 
-Shows home owner growth for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). On average, counties where workers outnumbered permits saw slower growth in black and Latino home owners from 2009-2019.
+Homeowner growth for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2009-2019. Analysis only shows counties that grew in workforce from 2009-2019.
 
 ```{r Home Owners, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -574,7 +610,7 @@ ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
   geom_point(data = OwnerChangesMelt, aes(x = TileSplit, y = value), 
              alpha=.75, 
              color = 'black') +
-  labs(title = "Growth in Home Owners by County",
+  labs(title = "Growth in Homeowners by County",
        subtitle = "Time: 2009-2019",
        x = NULL,
        y = "Growth") + 
@@ -591,41 +627,6 @@ ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgChange)) +
 
 ```
 
-# **Workers Per Permit by County's Rank in Worker Growth**
-
-Shows workers per permit ratio for each county. Counties are ordered from slowest worker growth (left side) to fastest worker growth (right side). Data is from 2009-2019.
-
-```{r Growth Speed, echo = FALSE, warning = FALSE, message = FALSE}
-
-LaborGrowth <- subset(FilteredDataTable, select = c(County.Name, 
-                                                    LaborRatio,
-                                                    LaborChange,
-                                                    LaborGrowthRate,
-                                                    TileSplit))
-LaborGrowth <- LaborGrowth %>%
-  arrange(LaborGrowthRate) %>%
-  mutate(LaborGrowthRank = row_number())
-
-ggplot(LaborGrowth, aes(x = as.factor(LaborGrowthRank), y = LaborRatio)) +
-  geom_bar(aes(fill = as.factor(TileSplit)), 
-           stat = 'identity', 
-           color = 'black',
-           size = 1) +
-  labs(title = "Workers Per Permit by\nCounty's Rank in Worker Growth",
-       subtitle = "Time: 2009-2019",
-       x = NULL,
-       y = "Workers Per Permit") + 
-  scale_fill_manual(name = NULL,
-                    breaks = c("1","2"),
-                    labels = c("Workers < Permits", "Workers > Permits"),
-                    values = c(col1, col2)) +
-  scale_x_discrete(breaks=c("6","28"),
-                   labels = c("Slowest Growth", "Fastest Growth")) +
-  scale_y_continuous(breaks = c(1:6)) +
-  theme_ipsum(grid="Y") +
-  theme(legend.position = "bottom")
-
-```
 
 </a>
 </div>
