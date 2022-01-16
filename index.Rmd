@@ -716,7 +716,7 @@ OwnerPlot <- ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
                                                       percent_function(
                                                         round(value,2)),
                                                       "\nWorkers per Permit:",
-                                                      round(LaborRatio))), 
+                                                      round(LaborRatio,2))), 
              alpha=.75, 
              color = 'black') +
   labs(title = "Growth in Homeowners by County",
