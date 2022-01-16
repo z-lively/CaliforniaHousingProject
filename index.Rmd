@@ -393,6 +393,53 @@ California county subdivisions with the change in employed workers per permit is
 
 ```{r Labor Force to Permits Interactive Map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE, out.width="100%"}
 
+# rent_change_pop_up <- function(CountyName) {
+#   
+#   RentChangesPopUp <- subset(DataTable, select = c(County.Name, 
+#                                                    LaborRatio,
+#                                                    LowRentChange,
+#                                                    MedRentChange,
+#                                                    HighRentChange))
+#   
+#   RentChangesPopUpMelt <- RentChangesPopUp %>% 
+#     reshape2::melt(id.vars = c("County.Name","LaborRatio"),
+#                    measure.vars = c("LowRentChange",
+#                                     "MedRentChange",
+#                                     "HighRentChange"))
+#   
+#   RentChangesPopUpMelt$County <- ifelse(RentChangesPopUpMelt$County.Name == CountyName, 1, 2)
+#   
+#   RentChangesPopUpSummary <- RentChangesPopUpMelt %>%
+#     group_by(variable) %>%
+#     mutate(AvgChange = mean(value)) %>%
+#     filter(County.Name == CountyName)
+#   
+#   RentChangesPopUpSummaryMelt <- RentChangesPopUpSummary %>% 
+#     reshape2::melt(variable.name = c("CountyGroup"),
+#                    id.vars = c("County.Name","LaborRatio","RentGroup"="variable"),
+#                    measure.vars = c("value","AvgChange"))
+#   
+#   ggplot(RentChangesPopUpSummaryMelt, 
+#          aes(x = as.factor(CountyGroup), y = value)) +
+#     geom_bar(aes(fill = as.factor(CountyGroup)), 
+#              stat = 'identity', 
+#              color = 'black',
+#              size = 1) 
+#     labs(title = "Change in Rent",
+#          subtitle = "Time: 2014-2019",
+#          x = NULL,
+#          y = "Change") +
+#     scale_fill_manual(name = NULL,
+#                       labels = c(CountyName, "Average Change"),
+#                       values = c("black", "white")) +
+#     scale_x_discrete(breaks=c("1","2"),
+#                      labels=NULL) +
+#     scale_y_continuous(labels=scales::dollar_format()) +
+#     facet_wrap(~variable, labeller = labeller(variable = RentChange.labs)) +
+#     theme_ipsum(grid="Y") +
+#     theme(legend.position = "bottom")
+# }
+
 leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
   addPolygons(data = MapDataTable$geometry,
               fillColor = factorPal(MapDataTable$LaborRatioRounded),
@@ -510,7 +557,8 @@ RankPlotInteractive <- ggplot(LaborGrowth,
         axis.text.x = element_text(size = 12),
         axis.title.y = element_text(size = 12))
 
-ggplotly(RankPlotInteractive, tooltip = c("text"))
+ggplotly(RankPlotInteractive, tooltip = c("text")) %>% 
+  layout(legend = list(orientation = "h"))
 
 ```
 
@@ -592,7 +640,8 @@ RentPlotInteractive <- ggplot(RentChangesSummary,
         axis.text.x = element_text(size = 12),
         axis.title.y = element_text(size = 12))
 
-ggplotly(RentPlotInteractive, tooltip = c("text"))
+ggplotly(RentPlotInteractive, tooltip = c("text")) %>% 
+  layout(legend = list(orientation = "h"))
 
 ```
 
@@ -652,12 +701,12 @@ HousePlotInteractive <- ggplot(HouseChangesSummary,
            color = 'black',
            size = 1) +
   geom_point(data = HouseChangesMelt, aes(x = TileSplit, 
-                                         y = value,
-                                         text = paste("County:", HouseChangesMelt$County.Name,
-                                                      "\nCost Change:",
-                                                      dollar_function(HouseChangesMelt$value),
-                                                      "\nWorkers per Permit:",
-                                                      round(HouseChangesMelt$LaborRatio,2))), 
+                                          y = value,
+                                          text = paste("County:", HouseChangesMelt$County.Name,
+                                                       "\nCost Change:",
+                                                       dollar_function(HouseChangesMelt$value),
+                                                       "\nWorkers per Permit:",
+                                                       round(HouseChangesMelt$LaborRatio,2))), 
              alpha=.75, 
              color = 'black') +
   labs(title = "Change in Home Cost by County",
@@ -675,7 +724,8 @@ HousePlotInteractive <- ggplot(HouseChangesSummary,
         axis.text.x = element_text(size = 12),
         axis.title.y = element_text(size = 12))
 
-ggplotly(HousePlotInteractive, tooltip = c("text"))
+ggplotly(HousePlotInteractive, tooltip = c("text")) %>% 
+  layout(legend = list(orientation = "h"))
 ```
 
 # **Black and Latino Homeownership Grew Slower in Counties Where Workforce Growth Outnumbered Issued Permits**
@@ -699,7 +749,9 @@ OwnerChangesMelt <- OwnerChanges %>%
                                   "LatinoOwnerGrowthRate"))
 
 OwnerChangesSummary <- OwnerChangesMelt %>%
-  filter(County.Name != 'Alpine County' & County.Name != 'Mono County') %>%
+  filter(County.Name != 'Mono County' & 
+           County.Name != 'Tehama County' & 
+           County.Name != 'Sierra County') %>%
   group_by(TileSplit, TileSplitInteractive, variable) %>%
   summarize(AvgChange = mean(value))
 
@@ -710,13 +762,13 @@ OwnerPlot <- ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
            size = 1) +
   geom_point(data = OwnerChangesMelt, aes(x = TileSplit,
                                           y = value,
-                                         text = paste("County:", 
-                                                      County.Name,
-                                                      "\nGrowth:",
-                                                      percent_function(
-                                                        round(value,2)),
-                                                      "\nWorkers per Permit:",
-                                                      round(LaborRatio,2))), 
+                                          text = paste("County:", 
+                                                       County.Name,
+                                                       "\nGrowth:",
+                                                       percent_function(
+                                                         round(value,2)),
+                                                       "\nWorkers per Permit:",
+                                                       round(LaborRatio,2))), 
              alpha=.75, 
              color = 'black') +
   labs(title = "Growth in Homeowners by County",
@@ -734,14 +786,13 @@ OwnerPlot <- ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
         axis.text.x = element_text(size = 12),
         axis.title.y = element_text(size = 12))
 
-ggplotly(OwnerPlot, tooltip = c("text"))
+ggplotly(OwnerPlot, tooltip = c("text")) %>% 
+  layout(legend = list(orientation = "h"))
 
 ```
 
-
 </a>
 </div>
-
 
 </a>
 </div>
