@@ -68,7 +68,7 @@ get_acs_data <- function(ACSYears, variable) {
   ACSData <- subset(ACSData, select = -c(moe))
 }
 
-ACSYears <- lst(2009, 2019)
+ACSYears <- lst(2014, 2019)
 
 CAPOPULATION <- "B01003_001"
 CARENTLOW <- "B25057_001"
@@ -95,11 +95,11 @@ CAOwnerLatino <- get_acs_data(ACSYears, CAOWNERLATINO)
 ```
 ```{r Clean Data, echo = FALSE, warning = FALSE, message = FALSE}
 CleanCAPermits <- CAPermits %>% 
-  filter(Survey.Date >= 2009 & Survey.Date <= 2019)
+  filter(Survey.Date >= 2014 & Survey.Date <= 2019)
 
 CleanCALabor <- CALabor %>% 
   filter(AreaType == 'County') %>%
-  filter(Year == 2009 | Year == 2019) %>%
+  filter(Year == 2014 | Year == 2019) %>%
   filter(Month == 'December') %>%
   filter(SeasonallyAdjusted == 'N') %>%
   mutate(County.Name = Area.Name,
@@ -139,9 +139,9 @@ SpreadCAOwnerLatino <- spread_data(CleanCAOwnerLatino)
 ```
 ```{r Chunk 2, echo = FALSE, warning = FALSE, message = FALSE}
 
-calculate_growth_rate <- function(DataTable) {GrowthRate <- (DataTable$"2019" - DataTable$"2009")/
-  DataTable$"2009"}
-calculate_change <- function(DataTable) {LaborChange <- DataTable$"2019" - DataTable$"2009"}
+calculate_growth_rate <- function(DataTable) {GrowthRate <- (DataTable$"2019" - DataTable$"2014")/
+  DataTable$"2014"}
+calculate_change <- function(DataTable) {LaborChange <- DataTable$"2019" - DataTable$"2014"}
 
 SpreadCALabor <- SpreadCALabor %>%
   mutate(
@@ -387,9 +387,9 @@ percent_function = scales::percent_format()
 factorPal <- colorFactor(cols, MapDataTable$LaborRatioRounded)
 ```
 
-# **Change in Employed Workers Per Permit by County**
+# **Change in Employed Workers per Permit by County**
 
-California county subdivisions with the change in employed workers per permit issued from 2009-2019. 
+California county subdivisions with the change in employed workers per permit issued from 2014-2019. 
 
 ```{r Labor Force to Permits Interactive Map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE, out.width="100%"}
 
@@ -404,7 +404,7 @@ leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
                                     " gained ", 
                                     prettyNum(round(MapDataTable$LaborRatio,2),
                                               big.mark = ","),
-                                    " workers for every housing permit issued from 2009 to 2019.",
+                                    " workers for every housing permit issued from 2014 to 2019.",
                                     "<br/>",
                                     "<br/>",
                                     "Workers Gained: ", 
@@ -418,7 +418,7 @@ leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
                              paste0(MapDataTable$County.Name, 
                                     " lost ", 
                                     prettyNum(abs(round(MapDataTable$LaborRatio,2)), big.mark = ","),
-                                    " workers for every housing permit issued from 2009 to 2019.",
+                                    " workers for every housing permit issued from 2014 to 2019.",
                                     "<br/>",
                                     "<br/>",
                                     "Workers Lost: ", 
@@ -450,9 +450,9 @@ leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
   setMapWidgetStyle(list(background= "black")) 
 ```
 
-# **The Fastest Growing Counties Issued The Fewest Permits Per New Worker**
+# **The Fastest Growing Counties Issued the Fewest Permits per New Worker**
 
-Workers per permit ratio for each county. Counties are ordered from slowest worker growth (left side) to fastest worker growth (right side). Data is from 2009-2019. Analysis only shows counties that grew in workers from 2009-2019.
+Workers per permit ratio for each county. Counties are ordered from slowest worker growth (left side) to fastest worker growth (right side). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
 ```{r Growth Speed, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
 
@@ -470,8 +470,8 @@ RankPlotStatic <- ggplot(LaborGrowth, aes(x = as.factor(LaborGrowthRank), y = La
            stat = 'identity', 
            color = 'black',
            size = 1) +
-  labs(title = "Workers Per Permit by County's Rank in Worker Growth",
-       subtitle = "Time: 2009-2019",
+  labs(title = "Workers per Permit by County's Rank in Worker Growth",
+       subtitle = "Time: 2014-2019",
        x = NULL,
        y = "Workers Per Permit") + 
   scale_fill_manual(name = NULL,
@@ -496,10 +496,10 @@ RankPlotInteractive <- ggplot(LaborGrowth,
            stat = 'identity', 
            color = 'black',
            size = 1) +
-  labs(title = "Workers Per Permit by County's Rank in Worker Growth",
-       subtitle = "Time: 2009-2019",
+  labs(title = "Workers per Permit by County's Rank in Worker Growth",
+       subtitle = "Time: 2014-2019",
        x = NULL,
-       y = "Workers Per Permit") + 
+       y = "Workers per Permit") + 
   scale_fill_manual(name = NULL,
                     values = c(col1, col2)) +
   scale_x_discrete(breaks=c("6","42"),
@@ -514,9 +514,9 @@ ggplotly(RankPlotInteractive, tooltip = c("text"))
 
 ```
 
-# **Rent Increased More in Counties Where Workforce Growth Outnumbered Permits Issued**
+# **Rent Increased More in Counties Where Workforce Growth Outnumbered Issued Permits**
 
-Rent change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2009-2019. Analysis only shows counties that grew in workers from 2009-2019.
+Rent change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
 ```{r Workers Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
 
@@ -547,7 +547,7 @@ RentPlotStatic <- ggplot(RentChangesSummary, aes(x = as.factor(TileSplit), y = A
              alpha=.75, 
              color = 'black') +
   labs(title = "Change in Rent by County",
-       subtitle = "Time: 2009-2019",
+       subtitle = "Time: 2014-2019",
        x = NULL,
        y = "Change") + 
   scale_fill_manual(name = NULL,
@@ -573,12 +573,12 @@ RentPlotInteractive <- ggplot(RentChangesSummary,
                                          text = paste("County:", County.Name, 
                                                       "\nRent Change:",
                                                       dollar_function(value),
-                                                      "\nWorkers Per Permit:",
+                                                      "\nWorkers per Permit:",
                                                       round(LaborRatio,2))), 
              alpha=.75, 
              color = 'black') +
   labs(title = "Change in Rent by County",
-       subtitle = "Time: 2009-2019",
+       subtitle = "Time: 2014-2019",
        x = NULL,
        y = "Change") + 
   scale_fill_manual(name = NULL,
@@ -596,9 +596,9 @@ ggplotly(RentPlotInteractive, tooltip = c("text"))
 
 ```
 
-# **Cost of Buying Home Increased More in Counties Where Workforce Growth Outnumbered Permits Issued**
+# **Cost of Buying Home Increased More in Counties Where Workforce Growth Outnumbered Issued Permits**
 
-Change in cost of buying home for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2009-2019. Analysis only shows counties that grew in workers from 2009-2019.
+Change in cost of buying home for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
 ```{r Workers Permits and House, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
 
@@ -629,7 +629,7 @@ HousePlotStatic <- ggplot(HouseChangesSummary, aes(x = as.factor(TileSplit), y =
              alpha=.75, 
              color = 'black') +
   labs(title = "Change in Home Cost by County",
-       subtitle = "Time: 2009-2019",
+       subtitle = "Time: 2014-2019",
        x = NULL,
        y = "Change") + 
   scale_fill_manual(name = NULL,
@@ -656,12 +656,12 @@ HousePlotInteractive <- ggplot(HouseChangesSummary,
                                          text = paste("County:", HouseChangesMelt$County.Name,
                                                       "\nCost Change:",
                                                       dollar_function(HouseChangesMelt$value),
-                                                      "\nWorkers Per Permit:",
+                                                      "\nWorkers per Permit:",
                                                       round(HouseChangesMelt$LaborRatio,2))), 
              alpha=.75, 
              color = 'black') +
   labs(title = "Change in Home Cost by County",
-       subtitle = "Time: 2009-2019",
+       subtitle = "Time: 2014-2019",
        x = NULL,
        y = "Change") + 
   scale_fill_manual(name = NULL,
@@ -678,9 +678,9 @@ HousePlotInteractive <- ggplot(HouseChangesSummary,
 ggplotly(HousePlotInteractive, tooltip = c("text"))
 ```
 
-# **Latino Homeownership Grew Slower in Counties Where Workforce Growth Outnumbered Permits Issued**
+# **Black and Latino Homeownership Grew Slower in Counties Where Workforce Growth Outnumbered Issued Permits**
 
-Homeowner growth for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2009-2019. Analysis only shows counties that grew in workers from 2009-2019.
+Homeowner growth for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
 ```{r Home Owners, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
 
@@ -715,12 +715,12 @@ OwnerPlot <- ggplot(OwnerChangesSummary, aes(x = as.factor(TileSplit), y = AvgCh
                                                       "\nGrowth:",
                                                       percent_function(
                                                         round(value,2)),
-                                                      "\nWorkers Per Permit:",
+                                                      "\nWorkers per Permit:",
                                                       round(LaborRatio))), 
              alpha=.75, 
              color = 'black') +
   labs(title = "Growth in Homeowners by County",
-       subtitle = "Time: 2009-2019",
+       subtitle = "Time: 2014-2019",
        x = NULL,
        y = "Growth") + 
   scale_fill_manual(name = NULL,
