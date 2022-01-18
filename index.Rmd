@@ -497,7 +497,7 @@ leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
   setMapWidgetStyle(list(background= "black")) 
 ```
 
-# **The Fastest Growing Counties Issued the Fewest Permits per New Worker**
+# **The fastest growing counties issued the fewest permits per new worker**
 
 Workers per permit ratio for each county. Counties are ordered from slowest worker growth (left side) to fastest worker growth (right side). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
@@ -525,7 +525,7 @@ RankPlotStatic <- ggplot(LaborGrowth, aes(x = as.factor(LaborGrowthRank), y = La
                     breaks = c("1","2"),
                     labels = c("Workers < Permits", "Workers > Permits"),
                     values = c(col1, col2)) +
-  scale_x_discrete(breaks=c("6","42"),
+  scale_x_discrete(breaks=c("6","46"),
                    labels = c("Slowest Growth", "Fastest Growth")) +
   scale_y_continuous(breaks = c(1:6)) +
   theme_ipsum(grid="Y") +
@@ -549,7 +549,7 @@ RankPlotInteractive <- ggplot(LaborGrowth,
        y = "Workers per Permit") + 
   scale_fill_manual(name = NULL,
                     values = c(col1, col2)) +
-  scale_x_discrete(breaks=c("6","42"),
+  scale_x_discrete(breaks=c("6","46"),
                    labels = c("Slowest Growth", "Fastest Growth")) +
   scale_y_continuous(breaks = c(1:6)) +
   theme_ipsum(grid="Y") +
@@ -562,7 +562,7 @@ ggplotly(RankPlotInteractive, tooltip = c("text")) %>%
 
 ```
 
-# **Rent Increased More in Counties Where Workforce Growth Outnumbered Issued Permits**
+# **Rent increased more in counties where workforce growth outnumbered issued permits**
 
 Rent change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
@@ -645,7 +645,7 @@ ggplotly(RentPlotInteractive, tooltip = c("text")) %>%
 
 ```
 
-# **Cost of Buying Home Increased More in Counties Where Workforce Growth Outnumbered Issued Permits**
+# **Cost of buying a home increased more in counties where workforce growth outnumbered issued permits**
 
 Change in cost of buying home for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
@@ -728,7 +728,7 @@ ggplotly(HousePlotInteractive, tooltip = c("text")) %>%
   layout(legend = list(orientation = "h"))
 ```
 
-# **Black and Latino Homeownership Grew Slower in Counties Where Workforce Growth Outnumbered Issued Permits**
+# **Black and Latino homeownership grew slower in counties where workforce growth outnumbered issued permits**
 
 Homeowner growth for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
