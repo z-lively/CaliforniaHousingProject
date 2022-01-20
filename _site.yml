@@ -2,6 +2,6 @@ name: "California Housing"
 navbar:
   title: "California Housing"
   left:
-    - text: "Project"
+    - text: "Analysis"
       href: index.html
 output_dir: "docs"
