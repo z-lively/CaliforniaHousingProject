@@ -93,7 +93,7 @@ CAOwnerBlack <- get_acs_data(ACSYears, CAOWNERBLACK)
 CAOwnerLatino <- get_acs_data(ACSYears, CAOWNERLATINO)
 
 ```
-```{r Clean Data, echo = FALSE, warning = FALSE, message = FALSE}
+```{r Clean data, echo = FALSE, warning = FALSE, message = FALSE}
 CleanCAPermits <- CAPermits %>% 
   filter(Survey.Date >= 2014 & Survey.Date <= 2019)
 
@@ -120,7 +120,7 @@ CleanCAOwnerBlack <- CAOwnerBlack
 CleanCAOwnerLatino <- CAOwnerLatino
 
 ```
-```{r Spread Data, echo = FALSE, warning = FALSE, message = FALSE}
+```{r Spread data, echo = FALSE, warning = FALSE, message = FALSE}
 SpreadCAPermits <- CleanCAPermits
 SpreadCALabor <- CleanCALabor  %>% spread(Year, Labor.Force)
 
@@ -137,7 +137,7 @@ SpreadCAOwnerWhite <- spread_data(CleanCAOwnerWhite)
 SpreadCAOwnerBlack <- spread_data(CleanCAOwnerBlack)
 SpreadCAOwnerLatino <- spread_data(CleanCAOwnerLatino)
 ```
-```{r Chunk 2, echo = FALSE, warning = FALSE, message = FALSE}
+```{r Calculations, echo = FALSE, warning = FALSE, message = FALSE}
 
 calculate_growth_rate <- function(DataTable) {GrowthRate <- (DataTable$"2019" - DataTable$"2014")/
   DataTable$"2014"}
@@ -239,7 +239,7 @@ SummaryCAOwnerBlack <- SpreadCAOwnerBlack %>% subset(select = c(County.Name, Bla
 SummaryCAOwnerLatino<- SpreadCAOwnerLatino %>% subset(select = c(County.Name, LatinoOwnerGrowthRate, LatinoOwnerChange))
 
 ```
-```{r Combine Tables, echo = FALSE, warning = FALSE, message = FALSE}
+```{r Combine tables, echo = FALSE, warning = FALSE, message = FALSE}
 # Need to figure out better way to do this
 
 MergeCA1 <- merge(SummaryCAPermits, SummaryCALabor)
@@ -256,7 +256,7 @@ MergeCA10 <- merge(MergeCA9, MergeCA5)
 DataTable <- merge(MergeCA7, MergeCA10)
 
 ```
-```{r Second Calculations, echo = FALSE, warning = FALSE, message = FALSE}
+```{r Second calculations, echo = FALSE, warning = FALSE, message = FALSE}
 
 DataTable <- DataTable %>%
   mutate(LaborRatio = LaborChange/NumPermits,
@@ -271,7 +271,7 @@ FilteredDataTable <- DataTable %>%
                                                   'Workers > Permits')))
 
 ```
-```{r Correlation Matrix, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
+```{r Correlation matrix, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
 
 CorrelationMatrix <- DataTable %>% subset(select = -c(County.Name))
 
@@ -280,7 +280,7 @@ chart.Correlation(CorrelationMatrix, histogram = TRUE)
 plot(CorrelationMatrix$LaborRatio, CorrelationMatrix$RentChange)
 
 ```
-```{r Chunk 9, echo = FALSE, warning = FALSE, message = FALSE}
+```{r Get map pieces, echo = FALSE, warning = FALSE, message = FALSE}
 us_states <- states(cb = FALSE, class = "sf") 
 
 ca_state <- us_states %>% filter(STUSPS == "CA")
@@ -328,8 +328,7 @@ ca_counties$values <- runif(nrow(ca_counties))
 
 ca_counties_for_merge <- ca_counties %>% mutate(County.Name = NAMELSAD)
 ```
-
-```{r Merge Map and Data, echo = FALSE, warning = FALSE, message = FALSE}
+```{r Merge map and data, echo = FALSE, warning = FALSE, message = FALSE}
 
 MapDataTable <- merge(DataTable, ca_counties_for_merge)
 
@@ -344,8 +343,7 @@ MapDataTable <- MapDataTable %>% mutate(LaborRatioSimple =
 
 
 ```
-
-```{r Plot Variables, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
+```{r Plot variables, echo = FALSE, warning = FALSE, message = FALSE, include = FALSE}
 reds <- tmaptools::get_brewer_pal("RdGy", 9)
 cols <- c(reds[8], reds[7], reds[4], reds[3], reds[2], reds[1])
 
@@ -391,7 +389,7 @@ factorPal <- colorFactor(cols, MapDataTable$LaborRatioRounded)
 
 California county subdivisions with county-level change in employed workers per housing permit issued from 2014-2019. 
 
-```{r Labor Force to Permits Interactive Map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE, out.width="100%"}
+```{r Workers to permits interactive map, echo = FALSE, include = TRUE, message = FALSE, warning = FALSE, out.width="100%"}
 
 # rent_change_pop_up <- function(CountyName) {
 #   
@@ -501,7 +499,7 @@ leaflet(options = leafletOptions(zoomSnap = .65, zoomDelta=.5)) %>%
 
 Workers per housing permit ratio for each county. Counties are ordered from slowest worker growth (left side) to fastest worker growth (right side). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
-```{r Growth Speed, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
+```{r Growth speed, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
 
 LaborGrowth <- subset(FilteredDataTable, select = c(County.Name, 
                                                     LaborRatio,
@@ -566,7 +564,7 @@ ggplotly(RankPlotInteractive, tooltip = c("text")) %>%
 
 Rent change for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
-```{r Workers Permits and Rent, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
+```{r Workers to permits and rent, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
 
 RentChanges <- subset(FilteredDataTable, select = c(County.Name, 
                                                     LaborRatio,
@@ -649,7 +647,7 @@ ggplotly(RentPlotInteractive, tooltip = c("text")) %>%
 
 Change in cost of buying home for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
-```{r Workers Permits and House, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
+```{r Workers to permits and house cost, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
 
 HouseChanges <- subset(FilteredDataTable, select = c(County.Name, 
                                                      LaborRatio,
@@ -732,7 +730,7 @@ ggplotly(HousePlotInteractive, tooltip = c("text")) %>%
 
 Homeowner growth for counties grouped by Workers:Permits < 1:1 (permits outnumbered workers) and Workers:Permits > 1:1 (workers outnumbered permits). Data is from 2014-2019. Analysis only shows counties that grew in workers from 2014-2019.
 
-```{r Home Owners, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
+```{r Workers to permits and home owners, echo = FALSE, warning = FALSE, message = FALSE, out.width="100%"}
 
 OwnerChanges <- subset(FilteredDataTable, select = c(County.Name, 
                                                      LaborRatio,
